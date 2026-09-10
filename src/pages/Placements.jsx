@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardHeader } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { DotPattern } from '../components/ui/dot-pattern';
+import { CompanyLogo } from '../components/common/CompanyLogo';
 import { useAuth } from '../hooks/useAuth';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { knowledgeService } from '../services/knowledgeService';
@@ -738,6 +739,28 @@ export function Placements() {
             </div>
           </Card>
 
+          {/* Quick Company Logo Filter Pills */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Top Recruiters:</span>
+            {['All', 'Google', 'NVIDIA', 'Microsoft', 'Texas Instruments'].map((cName) => {
+              const isSelected = (cName === 'All' && !companySearch) || (companySearch && companySearch.toLowerCase() === cName.toLowerCase());
+              return (
+                <button
+                  key={cName}
+                  onClick={() => setCompanySearch(cName === 'All' ? '' : cName)}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition border ${
+                    isSelected
+                      ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                      : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200'
+                  }`}
+                >
+                  {cName !== 'All' && <CompanyLogo company={cName} className="w-4 h-4 rounded-md" size={12} />}
+                  <span>{cName}</span>
+                </button>
+              );
+            })}
+          </div>
+
           {/* Cards Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {filteredCompanyInsights.map((comp) => (
@@ -749,9 +772,7 @@ export function Placements() {
                   {/* Card Header: Company, Batch, CTC */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-base shadow-sm">
-                        {comp.company.slice(0, 2).toUpperCase()}
-                      </div>
+                      <CompanyLogo company={comp.company} className="w-12 h-12" size={26} />
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="text-base font-black text-slate-900">{comp.company}</h3>
@@ -1006,10 +1027,13 @@ export function Placements() {
                   </div>
 
                   {/* Employer & Role */}
-                  <div className="mt-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-xs font-black text-slate-900">{alm.company}</p>
-                    <p className="text-[11px] text-slate-600">{alm.role}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{alm.department}</p>
+                  <div className="mt-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-3">
+                    <CompanyLogo company={alm.company} className="w-10 h-10" size={20} />
+                    <div>
+                      <p className="text-xs font-black text-slate-900">{alm.company}</p>
+                      <p className="text-[11px] text-slate-600">{alm.role}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{alm.department}</p>
+                    </div>
                   </div>
 
                   <p className="text-xs text-slate-600 mt-3 leading-relaxed">
@@ -1153,16 +1177,19 @@ export function Placements() {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-100 overflow-hidden">
             <div className="p-6 border-b border-slate-100 bg-slate-50 flex items-start justify-between">
-              <div>
-                <span className="text-[10px] font-bold bg-indigo-600 text-white px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                  Verified Placement Playbook
-                </span>
-                <h3 className="text-xl font-black text-slate-900 mt-2">
-                  {selectedPlaybookModal.company} — {selectedPlaybookModal.role}
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Shared by {selectedPlaybookModal.author} ({selectedPlaybookModal.batchYear}) • {selectedPlaybookModal.department}
-                </p>
+              <div className="flex items-start gap-4">
+                <CompanyLogo company={selectedPlaybookModal.company} className="w-14 h-14" size={30} />
+                <div>
+                  <span className="text-[10px] font-bold bg-indigo-600 text-white px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    Verified Placement Playbook
+                  </span>
+                  <h3 className="text-xl font-black text-slate-900 mt-2">
+                    {selectedPlaybookModal.company} — {selectedPlaybookModal.role}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Shared by {selectedPlaybookModal.author} ({selectedPlaybookModal.batchYear}) • {selectedPlaybookModal.department}
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setSelectedPlaybookModal(null)}
