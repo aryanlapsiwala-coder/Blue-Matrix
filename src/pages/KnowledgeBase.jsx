@@ -34,7 +34,9 @@ import {
   Send,
   Building,
   User,
-  Trash2
+  Trash2,
+  Edit3,
+  Save
 } from 'lucide-react';
 
 const DEPARTMENTS_FILTER = [
@@ -130,6 +132,27 @@ export function KnowledgeBase() {
   const [activeItem, setActiveItem] = useState(null);
   const [newCommentText, setNewCommentText] = useState('');
   const [shareToast, setShareToast] = useState(false);
+
+  // Author Edit Modal State
+  const [editingItem, setEditingItem] = useState(null);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    category: '',
+    department: '',
+    summary: '',
+    content: '',
+    tags: '',
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  // Author-only access check
+  const canUserEdit = (item) => {
+    if (!item) return false;
+    if (role === ROLES.ADMIN) return true;
+    if (user?.name && item.author && item.author.trim().toLowerCase() === user.name.trim().toLowerCase()) return true;
+    if (user?.email && item.authorEmail && item.authorEmail.trim().toLowerCase() === user.email.trim().toLowerCase()) return true;
+    return false;
+  };
 
   // Real Share Link to Clipboard
   const handleShare = (item, e) => {
@@ -397,6 +420,72 @@ export function KnowledgeBase() {
     );
 
     setActiveItem((prev) => ({ ...prev, comments: updatedComments }));
+  };
+
+  // Author Edit Handlers
+  const handleStartEdit = (item) => {
+    if (!canUserEdit(item)) {
+      alert("Unauthorized: Only the verified author of this document can make edits.");
+      return;
+    }
+    setEditForm({
+      title: item.title || '',
+      category: item.category || item.knowledgeType || 'Project Experience',
+      department: item.department || 'Computer Science & Engineering (CSE)',
+      summary: item.summary || '',
+      content: item.content || '',
+      tags: Array.isArray(item.tags) ? item.tags.join(', ') : (item.tags || ''),
+    });
+    setEditingItem(item);
+  };
+
+  const handleSaveEdit = async (e) => {
+    if (e) e.preventDefault();
+    if (!editingItem) return;
+    if (!canUserEdit(editingItem)) {
+      alert("Unauthorized: Only the verified author can update this document.");
+      return;
+    }
+    if (!editForm.title.trim()) {
+      alert("Document title is required.");
+      return;
+    }
+
+    setSavingEdit(true);
+    try {
+      const parsedTags = editForm.tags
+        ? editForm.tags.split(',').map((t) => t.trim()).filter(Boolean)
+        : (editingItem.tags || []);
+
+      const updatedFields = {
+        title: editForm.title.trim(),
+        category: editForm.category,
+        knowledgeType: editForm.category,
+        department: editForm.department,
+        summary: editForm.summary.trim(),
+        content: editForm.content.trim(),
+        tags: parsedTags,
+      };
+
+      await knowledgeService.update(editingItem.id, updatedFields);
+
+      // Update in main list
+      setItems((prev) =>
+        prev.map((it) => (it.id === editingItem.id ? { ...it, ...updatedFields } : it))
+      );
+
+      // Update activeItem if opened
+      if (activeItem && activeItem.id === editingItem.id) {
+        setActiveItem((prev) => ({ ...prev, ...updatedFields }));
+      }
+
+      setEditingItem(null);
+    } catch (err) {
+      console.error('Failed to update knowledge entry:', err);
+      alert('Failed to save changes. Please check network connection and try again.');
+    } finally {
+      setSavingEdit(false);
+    }
   };
 
   // Delete Article Handler (for Admin & Authors)
@@ -906,6 +995,19 @@ export function KnowledgeBase() {
                       </div>
 
                       <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {canUserEdit(item) && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStartEdit(item);
+                            }}
+                            className="p-1.5 text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-xl transition"
+                            title="Edit your published document"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={(e) => handleShare(item, e)}
@@ -964,9 +1066,21 @@ export function KnowledgeBase() {
                 </h2>
               </div>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
+                {/* Author or Admin only can edit */}
+                {canUserEdit(activeItem) && (
+                  <button
+                    onClick={() => handleStartEdit(activeItem)}
+                    className="px-2.5 py-1.5 text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-xl transition flex items-center gap-1.5 text-xs font-bold"
+                    title="Edit your published document"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Edit</span>
+                  </button>
+                )}
+
                 {/* Author or Admin only can delete */}
-                {(role === ROLES.ADMIN || (user?.name && activeItem.author?.toLowerCase() === user?.name?.toLowerCase())) && (
+                {canUserEdit(activeItem) && (
                   <button
                     onClick={() => handleDeleteEntry(activeItem.id)}
                     className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition"
@@ -1279,6 +1393,160 @@ export function KnowledgeBase() {
                 Close Window
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* AUTHOR-ONLY EDIT MODAL */}
+      {editingItem && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4 z-[60] animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+            {/* Header */}
+            <div className="p-5 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                  <Edit3 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Edit Published Document</h3>
+                  <p className="text-[11px] text-slate-500">
+                    Author control: Only you (or Admin) have permission to edit this document.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingItem(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition"
+                title="Cancel & Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSaveEdit} className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Document Title <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.title}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, title: e.target.value }))}
+                  className="w-full text-sm font-semibold px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+                  placeholder="e.g. RISC-V 5-Stage Pipelined Core in Verilog..."
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Category / Knowledge Type
+                  </label>
+                  <select
+                    value={editForm.category}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, category: e.target.value }))}
+                    className="w-full text-xs font-medium px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+                  >
+                    {KNOWLEDGE_TYPES_FILTER.filter((t) => t !== 'All').map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Department
+                  </label>
+                  <select
+                    value={editForm.department}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, department: e.target.value }))}
+                    className="w-full text-xs font-medium px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+                  >
+                    {DEPARTMENTS_FILTER.filter((d) => d !== 'All').map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Executive Summary
+                </label>
+                <textarea
+                  rows={3}
+                  value={editForm.summary}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, summary: e.target.value }))}
+                  className="w-full text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition leading-relaxed"
+                  placeholder="Short briefing summarizing the insights..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Full Content & SOP (Markdown supported)
+                </label>
+                <textarea
+                  rows={8}
+                  value={editForm.content}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, content: e.target.value }))}
+                  className="w-full text-xs font-mono px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition leading-relaxed"
+                  placeholder="Detailed notes, steps, code snippets, or runbooks..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Tags <span className="text-slate-400 font-normal">(Comma-separated)</span>
+                </label>
+                <input
+                  type="text"
+                  value={editForm.tags}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, tags: e.target.value }))}
+                  className="w-full text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+                  placeholder="e.g. Verilog, FPGA, Architecture"
+                />
+              </div>
+
+              {/* Actions Footer */}
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditingItem(null)}
+                  disabled={savingEdit}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  disabled={savingEdit}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5"
+                >
+                  {savingEdit ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-3.5 h-3.5" />
+                      <span>Save Changes</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -853,6 +853,48 @@ export const knowledgeService = {
     return newComment;
   },
 
+  update: async (id, updateData) => {
+    // 1. Update in-memory SAMPLE_KNOWLEDGE_ITEMS
+    const idx = SAMPLE_KNOWLEDGE_ITEMS.findIndex((item) => item.id === id);
+    if (idx !== -1) {
+      SAMPLE_KNOWLEDGE_ITEMS[idx] = {
+        ...SAMPLE_KNOWLEDGE_ITEMS[idx],
+        ...updateData,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
+    // 2. Persist update in Supabase PostgreSQL if configured
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const payload = {};
+        if (updateData.title !== undefined) payload.title = updateData.title;
+        if (updateData.summary !== undefined) payload.summary = updateData.summary;
+        if (updateData.content !== undefined) payload.content = updateData.content;
+        if (updateData.category !== undefined) payload.category = updateData.category;
+        if (updateData.department !== undefined) payload.department = updateData.department;
+        if (updateData.tags !== undefined) payload.tags = updateData.tags;
+
+        await supabase
+          .from('knowledge_entries')
+          .update(payload)
+          .eq('id', id);
+        console.log('[Supabase] Updated knowledge entry in PostgreSQL:', id);
+      } catch (err) {
+        console.warn('[knowledgeService] Supabase update error:', err.message);
+      }
+    }
+
+    // 3. Fallback to API if available
+    try {
+      await api.put(`/knowledge/${id}`, updateData);
+    } catch {
+      // ignore
+    }
+
+    return true;
+  },
+
   delete: async (id) => {
     if (isSupabaseConfigured && supabase) {
       try {
