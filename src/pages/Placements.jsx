@@ -754,7 +754,7 @@ export function Placements() {
                       : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200'
                   }`}
                 >
-                  {cName !== 'All' && <CompanyLogo company={cName} className="w-4 h-4 rounded-md" size={12} />}
+                  {cName !== 'All' && <CompanyLogo company={cName} className="w-4 h-4" />}
                   <span>{cName}</span>
                 </button>
               );
