@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { ROLES } from '../constants/roles';
 import { pushCampusNotification } from '../services/notificationService';
+import { DotPattern } from '../components/ui/dot-pattern';
 import {
   Wrench,
   Search,
@@ -454,7 +455,15 @@ export function EquipmentWiki() {
       {/* ========================================================
           HERO BANNER
       ======================================================== */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden border border-indigo-500/20">
+        <DotPattern
+          width={20}
+          height={20}
+          cx={1}
+          cy={1}
+          cr={1}
+          className="fill-indigo-400/25 opacity-70 [mask-image:radial-gradient(ellipse_at_center,white,transparent_75%)]"
+        />
         <div className="space-y-1.5 relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-emerald-400 text-xs font-bold border border-white/15">
             <Wrench className="w-3.5 h-3.5 text-emerald-300" />

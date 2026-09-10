@@ -6,6 +6,7 @@ import { Button } from '../components/common/Button';
 import { knowledgeService, SAMPLE_KNOWLEDGE_ITEMS } from '../services/knowledgeService';
 import { ROLES, ROLE_CONFIG } from '../constants/roles';
 import { formatDate } from '../utils/formatters';
+import { DotPattern } from '../components/ui/dot-pattern';
 import {
   Search,
   Filter,
@@ -428,8 +429,16 @@ export function KnowledgeBase() {
   return (
     <div className="space-y-6">
       {/* Top Header & Search Bar */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl">
-        <div className="max-w-3xl">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-indigo-500/20">
+        <DotPattern
+          width={20}
+          height={20}
+          cx={1}
+          cy={1}
+          cr={1}
+          className="fill-indigo-400/25 opacity-70 [mask-image:radial-gradient(ellipse_at_center,white,transparent_75%)]"
+        />
+        <div className="max-w-3xl relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-xs backdrop-blur-md mb-3 border border-white/15">
             <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
             <span>Central Campus Knowledge Repository</span>
