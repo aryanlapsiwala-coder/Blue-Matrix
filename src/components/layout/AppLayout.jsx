@@ -4,8 +4,6 @@ import { Navbar } from './Navbar';
 import { Sidebar } from './Sidebar';
 import { KnowBotDrawer } from '../common/KnowBotDrawer';
 import { CommandPalette } from '../common/CommandPalette';
-import { JudgeDemoScenarios } from '../common/JudgeDemoScenarios';
-
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [knowBotOpen, setKnowBotOpen] = useState(false);
@@ -25,9 +23,6 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* 1-Click Judge Live Demo Presets Bar */}
-      <JudgeDemoScenarios onOpenKnowBot={() => setKnowBotOpen(true)} />
-
       <Navbar
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         onOpenKnowBot={() => setKnowBotOpen(true)}
