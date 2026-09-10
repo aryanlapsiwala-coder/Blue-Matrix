@@ -429,14 +429,14 @@ export function KnowledgeBase() {
   return (
     <div className="space-y-6">
       {/* Top Header & Search Bar */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-indigo-500/20">
+      <div className="bg-gradient-to-r from-neutral-950 via-[#0a0a0d] to-black rounded-3xl p-6 sm:p-8 text-white shadow-2xl relative overflow-hidden border border-white/10 ring-1 ring-white/5">
         <DotPattern
           width={20}
           height={20}
           cx={1}
           cy={1}
-          cr={1}
-          className="fill-indigo-400/25 opacity-70 [mask-image:radial-gradient(ellipse_at_center,white,transparent_75%)]"
+          cr={1.25}
+          className="fill-white/50 opacity-90 [mask-image:radial-gradient(ellipse_at_center,white,transparent_85%)]"
         />
         <div className="max-w-3xl relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-xs backdrop-blur-md mb-3 border border-white/15">
