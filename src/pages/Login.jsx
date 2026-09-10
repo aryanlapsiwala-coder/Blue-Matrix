@@ -17,6 +17,7 @@ import {
   X
 } from 'lucide-react';
 import { Button } from '../components/common/Button';
+import { InteractiveDotBackground } from '../components/ui/interactive-dot-background';
 
 export function Login() {
   const { login } = useAuth();
@@ -129,8 +130,9 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4 sm:p-6">
-      <div className="max-w-md w-full">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
+      <InteractiveDotBackground />
+      <div className="max-w-md w-full relative z-10">
         {/* Brand Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 bg-indigo-600 rounded-2xl text-white shadow-xl shadow-indigo-500/30 mb-4">

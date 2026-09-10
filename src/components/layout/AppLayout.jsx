@@ -4,6 +4,7 @@ import { Navbar } from './Navbar';
 import { Sidebar } from './Sidebar';
 import { KnowBotDrawer } from '../common/KnowBotDrawer';
 import { CommandPalette } from '../common/CommandPalette';
+import { InteractiveDotBackground } from '../ui/interactive-dot-background';
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [knowBotOpen, setKnowBotOpen] = useState(false);
@@ -22,14 +23,17 @@ export function AppLayout() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col relative overflow-hidden">
+      {/* Interactive Animated Dot Pattern Background */}
+      <InteractiveDotBackground />
+
       <Navbar
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         onOpenKnowBot={() => setKnowBotOpen(true)}
         onOpenCommandPalette={() => setCommandPaletteOpen(true)}
       />
       
-      <div className="flex flex-1">
+      <div className="flex flex-1 relative z-10">
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         
         {/* Main Content Area */}

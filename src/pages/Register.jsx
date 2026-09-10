@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { OnboardingModal } from '../components/common/OnboardingModal';
+import { InteractiveDotBackground } from '../components/ui/interactive-dot-background';
 
 const DEPARTMENTS = [
   { id: 'CSE', label: 'Computer Science & Engineering (CSE)' },
@@ -150,8 +151,9 @@ export function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4 sm:p-6 lg:p-10">
-      <div className="max-w-2xl w-full">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4 sm:p-6 lg:p-10 relative overflow-hidden">
+      <InteractiveDotBackground />
+      <div className="max-w-2xl w-full relative z-10">
         {/* Brand Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 bg-indigo-600 rounded-2xl text-white shadow-xl shadow-indigo-500/30 mb-4">
