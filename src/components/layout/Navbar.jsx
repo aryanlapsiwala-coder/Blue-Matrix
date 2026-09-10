@@ -230,12 +230,6 @@ export function Navbar({ onMobileMenuToggle, onOpenKnowBot, onOpenCommandPalette
 
       {/* Right Controls */}
       <div className="flex items-center gap-2.5">
-        {/* Global Multi-Campus Node Selector */}
-        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 hover:bg-slate-200/80 border border-slate-200 rounded-full text-xs font-semibold text-slate-700 transition cursor-pointer" title="Federated Global Academic Network">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-[11px] font-bold text-slate-900">Global Node:</span>
-          <span className="text-[11px] text-indigo-700 font-bold">Central AI & Engineering Node</span>
-        </div>
 
         {/* KnowBot Drawer Trigger Pill */}
         <button
