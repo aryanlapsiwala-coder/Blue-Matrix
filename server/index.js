@@ -287,17 +287,12 @@ app.post('/api/v1/chat/query', async (req, res) => {
           : query;
 
         // Prioritize pure Gemini chat models over raw Gemma base models
-        const geminiChatModels = activeModels.filter(
-          (m) => m.startsWith('gemini-') && !m.includes('-pro') && !m.includes('-tts')
-        );
-
         const candidateModels = [
-          ...geminiChatModels,
-          'gemini-2.0-flash',
-          'gemini-1.5-flash',
-          'gemini-1.5-flash-8b',
           'gemini-3.6-flash',
-          ...activeModels.filter((m) => !m.includes('-pro')),
+          'gemini-3.7-flash',
+          'gemini-3.5-flash',
+          'gemini-3-flash-preview',
+          ...activeModels.filter((m) => m.startsWith('gemini-') && !m.includes('-tts') && !m.includes('-audio') && !m.includes('-image')),
         ];
 
         const uniqueModels = [...new Set(candidateModels)];
