@@ -1,0 +1,22 @@
+{
+  "name": "knowpass-rag-backend",
+  "version": "1.0.0",
+  "description": "KnowBot RAG Backend with Vector Similarity Search and Gemini/Groq Grounding",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "nodemailer": "^9.0.6"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}
