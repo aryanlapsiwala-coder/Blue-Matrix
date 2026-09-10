@@ -83,7 +83,7 @@ export function Dashboard() {
         />
         <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-white/[0.04] to-transparent pointer-events-none" />
         
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
+        <div className="relative z-10 space-y-5">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-xs backdrop-blur-md mb-3 border border-white/15">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -97,36 +97,28 @@ export function Dashboard() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 pt-1">
             <Link
               to={ROUTES.CONTRIBUTE}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-semibold rounded-xl transition shadow-lg shadow-indigo-500/20"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold rounded-xl transition shadow-lg shadow-black/20"
             >
-              <PlusCircle className="w-4 h-4" />
+              <PlusCircle className="w-4 h-4 text-slate-900" />
               Contribute Document
             </Link>
             <Link
               to={ROUTES.CHAT}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-xl backdrop-blur-md transition border border-white/20"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold rounded-xl transition shadow-lg shadow-black/20"
             >
-              <MessageSquare className="w-4 h-4" />
+              <MessageSquare className="w-4 h-4 text-slate-900" />
               Ask Campus AI
             </Link>
+            {role === ROLES.ADMIN && (
+              <Link to={ROUTES.ADMIN} className="ml-auto text-amber-300 font-semibold hover:underline flex items-center gap-1 text-xs">
+                <ShieldAlert className="w-3.5 h-3.5" />
+                Admin Portal Active
+              </Link>
+            )}
           </div>
-        </div>
-
-        {/* Role-Specific Mission Pill */}
-        <div className="mt-6 pt-5 border-t border-white/10 flex items-center justify-between text-xs text-slate-300">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-indigo-300">Active Role Scope:</span>
-            <span>{roleConfig?.description}</span>
-          </div>
-          {role === ROLES.ADMIN && (
-            <Link to={ROUTES.ADMIN} className="text-amber-300 font-semibold hover:underline flex items-center gap-1">
-              <ShieldAlert className="w-3.5 h-3.5" />
-              Admin Portal Active
-            </Link>
-          )}
         </div>
       </div>
 
