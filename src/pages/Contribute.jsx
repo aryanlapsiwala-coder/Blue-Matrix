@@ -31,7 +31,8 @@ import {
   Check,
   RefreshCw,
   Play,
-  Paperclip
+  Paperclip,
+  ShieldCheck,
 } from 'lucide-react';
 
 // 8 Knowledge Types with visual styling and descriptions
@@ -140,17 +141,42 @@ export function Contribute() {
   const { user, role, awardPoints } = useAuth();
   const navigate = useNavigate();
 
-  // Multi-step State
-  const [currentStep, setCurrentStep] = useState(1);
+  // Multi-step State with persistence
+  const [currentStep, setCurrentStep] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('knowpass_contribute_step');
+      return saved ? Math.min(Math.max(parseInt(saved, 10), 1), 5) : 1;
+    } catch {
+      return 1;
+    }
+  });
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // Form Fields
-  const [knowledgeType, setKnowledgeType] = useState('Project Experience');
+  // Form Fields with persistence
+  const [knowledgeType, setKnowledgeType] = useState(() => {
+    try {
+      return sessionStorage.getItem('knowpass_contribute_type') || 'Project Experience';
+    } catch {
+      return 'Project Experience';
+    }
+  });
   const [publishingScope, setPublishingScope] = useState('GLOBAL');
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(() => {
+    try {
+      return sessionStorage.getItem('knowpass_contribute_title') || '';
+    } catch {
+      return '';
+    }
+  });
   const [department, setDepartment] = useState(user?.department || DEPARTMENTS[0]);
-  const [description, setDescription] = useState('');
+  const [description, setDescription] = useState(() => {
+    try {
+      return sessionStorage.getItem('knowpass_contribute_desc') || '';
+    } catch {
+      return '';
+    }
+  });
   const [tags, setTags] = useState(['Project Experience', 'Engineering']);
   const [customTagInput, setCustomTagInput] = useState('');
 
@@ -176,6 +202,18 @@ export function Contribute() {
       setTags([knowledgeType, suggested[0], suggested[1]]);
     }
   }, [knowledgeType]);
+
+  // Persist current step and draft inputs to prevent data loss
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('knowpass_contribute_step', currentStep.toString());
+      sessionStorage.setItem('knowpass_contribute_type', knowledgeType);
+      sessionStorage.setItem('knowpass_contribute_title', title);
+      sessionStorage.setItem('knowpass_contribute_desc', description);
+    } catch {
+      // Storage unavailable or quota reached
+    }
+  }, [currentStep, knowledgeType, title, description]);
 
   // Video recording timer simulation
   useEffect(() => {
@@ -305,6 +343,14 @@ ${description.slice(0, 220)}...
       });
 
       setSubmitted(true);
+      try {
+        sessionStorage.removeItem('knowpass_contribute_step');
+        sessionStorage.removeItem('knowpass_contribute_type');
+        sessionStorage.removeItem('knowpass_contribute_title');
+        sessionStorage.removeItem('knowpass_contribute_desc');
+      } catch {
+        // ignore
+      }
       setTimeout(() => {
         navigate(ROUTES.KNOWLEDGE_BASE);
       }, 1600);
