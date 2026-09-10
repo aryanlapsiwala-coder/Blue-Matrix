@@ -78,7 +78,7 @@ export function InteractiveDotBackground({ className }: InteractiveDotBackground
         cx={1.2}
         cy={1.2}
         cr={1}
-        className="fill-slate-400/40 transition-opacity duration-1000 animate-pulse [animation-duration:8s] [mask-image:radial-gradient(ellipse_at_center,black_50%,transparent_95%)]"
+        className="fill-black/25 transition-opacity duration-1000 animate-pulse [animation-duration:8s] [mask-image:radial-gradient(ellipse_at_center,black_50%,transparent_95%)]"
       />
 
       {/* Interactive cursor spotlight layer */}
@@ -96,11 +96,11 @@ export function InteractiveDotBackground({ className }: InteractiveDotBackground
             cx={1.2}
             cy={1.2}
             cr={1.5}
-            className="fill-indigo-500/70"
+            className="fill-black/85"
           />
           {/* Subtle cursor aura */}
           <div
-            className="absolute rounded-full pointer-events-none blur-3xl opacity-25 bg-indigo-500 -translate-x-1/2 -translate-y-1/2"
+            className="absolute rounded-full pointer-events-none blur-3xl opacity-10 bg-black -translate-x-1/2 -translate-y-1/2"
             style={{
               width: "280px",
               height: "280px",
@@ -115,7 +115,7 @@ export function InteractiveDotBackground({ className }: InteractiveDotBackground
       {ripples.map((ripple) => (
         <span
           key={ripple.id}
-          className="absolute rounded-full border border-indigo-400/50 pointer-events-none animate-ping [animation-duration:1.2s] -translate-x-1/2 -translate-y-1/2"
+          className="absolute rounded-full border border-black/35 pointer-events-none animate-ping [animation-duration:1.2s] -translate-x-1/2 -translate-y-1/2"
           style={{
             left: `${ripple.x}px`,
             top: `${ripple.y}px`,
