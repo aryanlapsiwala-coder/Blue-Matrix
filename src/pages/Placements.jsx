@@ -635,11 +635,12 @@ export function Placements() {
 
         <div className="flex flex-wrap items-center gap-3 relative z-10">
           <Button
+            variant="white"
             onClick={() => setShareModalOpen(true)}
-            className="bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs shadow-lg shadow-black/20 flex items-center gap-2 px-4 py-2.5 transition"
+            className="!text-black hover:!text-black font-bold text-xs shadow-lg shadow-black/20 flex items-center gap-2 px-4 py-2.5 transition"
           >
-            <PlusCircle className="w-4 h-4 text-slate-900" />
-            <span>Share Placement Playbook</span>
+            <PlusCircle className="w-4 h-4 !text-black stroke-[2.5]" />
+            <span className="!text-black font-bold">Share Placement Playbook</span>
           </Button>
         </div>
       </div>

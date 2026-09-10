@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '@/lib/utils';
 
 export function Button({
   children,
@@ -19,6 +20,7 @@ export function Button({
     outline: 'border border-slate-300 hover:bg-slate-50 text-slate-700 focus:ring-indigo-500',
     danger: 'bg-rose-600 hover:bg-rose-700 text-white focus:ring-rose-500',
     ghost: 'hover:bg-slate-100 text-slate-700 focus:ring-slate-300',
+    white: 'bg-white hover:bg-slate-100 text-slate-900 shadow-md focus:ring-slate-400',
   };
 
   const sizes = {
@@ -32,7 +34,7 @@ export function Button({
       type={type}
       disabled={disabled || loading}
       onClick={onClick}
-      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
+      className={cn(baseStyles, variants[variant], sizes[size], className)}
       {...props}
     >
       {loading && (

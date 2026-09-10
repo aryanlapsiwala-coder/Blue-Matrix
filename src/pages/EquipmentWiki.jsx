@@ -479,11 +479,12 @@ export function EquipmentWiki() {
 
         <div className="flex items-center gap-3 relative z-10">
           <Button
+            variant="white"
             onClick={() => setAddModalOpen(true)}
-            className="bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs shadow-lg shadow-black/20 px-4 py-2.5 flex items-center gap-2 transition"
+            className="!text-black hover:!text-black font-bold text-xs shadow-lg shadow-black/20 px-4 py-2.5 flex items-center gap-2 transition"
           >
-            <PlusCircle className="w-4 h-4 text-slate-900" />
-            <span>Register Facility Hardware</span>
+            <PlusCircle className="w-4 h-4 !text-black stroke-[2.5]" />
+            <span className="!text-black font-bold">Register Facility Hardware</span>
           </Button>
         </div>
       </div>

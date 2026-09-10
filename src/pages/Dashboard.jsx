@@ -100,17 +100,17 @@ export function Dashboard() {
           <div className="flex flex-wrap items-center gap-3 pt-1">
             <Link
               to={ROUTES.CONTRIBUTE}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold rounded-xl transition shadow-lg shadow-black/20"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-100 !text-black text-xs font-bold rounded-xl transition shadow-lg shadow-black/20"
             >
-              <PlusCircle className="w-4 h-4 text-slate-900" />
-              Contribute Document
+              <PlusCircle className="w-4 h-4 !text-black stroke-[2.5]" />
+              <span className="!text-black font-bold">Contribute Document</span>
             </Link>
             <Link
               to={ROUTES.CHAT}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold rounded-xl transition shadow-lg shadow-black/20"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-100 !text-black text-xs font-bold rounded-xl transition shadow-lg shadow-black/20"
             >
-              <MessageSquare className="w-4 h-4 text-slate-900" />
-              Ask Campus AI
+              <MessageSquare className="w-4 h-4 !text-black stroke-[2.5]" />
+              <span className="!text-black font-bold">Ask Campus AI</span>
             </Link>
             {role === ROLES.ADMIN && (
               <Link to={ROUTES.ADMIN} className="ml-auto text-amber-300 font-semibold hover:underline flex items-center gap-1 text-xs">
