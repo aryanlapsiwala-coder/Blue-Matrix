@@ -1012,6 +1012,9 @@ export const knowledgeService = {
       }
       saveLocalCustomEntry(finalItem);
       recordUserContributionId(finalItem.id, data.authorEmail);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('knowpass-document-created', { detail: finalItem }));
+      }
     }
 
     // 🧠 Instant AI Vector Learning: Dynamically embed document in KnowBot AI engine
