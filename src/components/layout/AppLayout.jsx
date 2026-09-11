@@ -6,6 +6,7 @@ import { KnowBotDrawer } from '../common/KnowBotDrawer';
 import { CommandPalette } from '../common/CommandPalette';
 import { InteractiveDotBackground } from '../ui/interactive-dot-background';
 import { ErrorBoundary } from '../common/ErrorBoundary';
+import { CelebrationModal } from '../common/CelebrationModal';
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [knowBotOpen, setKnowBotOpen] = useState(false);
@@ -59,6 +60,9 @@ export function AppLayout() {
         isOpen={knowBotOpen}
         onClose={() => setKnowBotOpen(false)}
       />
+
+      {/* Global Points Celebration Modal with Canvas Party Poppers */}
+      <CelebrationModal />
     </div>
   );
 }

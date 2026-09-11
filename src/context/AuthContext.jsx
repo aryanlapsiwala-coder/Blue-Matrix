@@ -93,6 +93,17 @@ export function AuthProvider({ children }) {
           link: '/profile',
         });
 
+        // Trigger celebratory popup & party poppers
+        window.dispatchEvent(
+          new CustomEvent('knowpass-celebration', {
+            detail: {
+              amount,
+              reason: reason || 'Outstanding Campus Contribution',
+              newTotal: newPts,
+            },
+          })
+        );
+
         // Async update Supabase PostgreSQL profiles table
         if (isSupabaseConfigured && supabase && prev.email) {
           supabase
