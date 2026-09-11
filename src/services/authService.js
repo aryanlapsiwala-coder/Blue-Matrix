@@ -1,6 +1,6 @@
 import api from './api';
 import { tokenStorage } from '../utils/tokenStorage';
-import { ROLES } from '../constants/roles';
+import { ROLES, ROLE_CONFIG } from '../constants/roles';
 
 // Demo fallback mock users for instant testing without a backend server
 export const DEMO_USERS = {
@@ -108,8 +108,21 @@ export const authService = {
         // 2. Check Supabase Auth user metadata
         const metadata = authData.user.user_metadata || {};
         const userName = profile?.name || metadata.name || credentials.email.split('@')[0];
-        // Strictly honor the simulated role chosen by user on the login form
-        const userRole = credentials.role || profile?.role || metadata.role || ROLES.STUDENT;
+
+        // 1. Identify the authentic registered role of this account
+        const registeredRole = profile?.role || metadata.role || ROLES.STUDENT;
+
+        // 2. Strict Role-Based Access Validation:
+        // A Junior Student account cannot log in under the Alumni, Faculty, or Admin role (and vice versa)
+        if (credentials.role && credentials.role !== registeredRole) {
+          const expectedLabel = ROLE_CONFIG[registeredRole]?.label || registeredRole;
+          const selectedLabel = ROLE_CONFIG[credentials.role]?.label || credentials.role;
+          throw new Error(
+            `Role Mismatch: This account (${credentials.email.trim()}) is registered as a ${expectedLabel}. You cannot log in under the ${selectedLabel} role. Please select "${expectedLabel}" above to continue.`
+          );
+        }
+
+        const userRole = registeredRole;
         const userDept = profile?.department || metadata.department || 'Computer Science & Engineering (CSE)';
         const userYear = profile?.year_of_study || metadata.year_of_study || '4th Year (Senior)';
 
@@ -129,24 +142,14 @@ export const authService = {
           currentCompany: profile?.current_company || metadata.current_company || (userRole === ROLES.ALUMNI ? 'NVIDIA (Senior Engineer)' : null),
           workEmail: profile?.work_email || metadata.work_email || (userRole === ROLES.ALUMNI ? credentials.email.trim() : null),
           rollNumber: profile?.roll_number || metadata.roll_number || (userRole === ROLES.ADMIN ? 'ADM-SYS-001' : userRole === ROLES.FACULTY ? 'FAC-EMP-4091' : userRole === ROLES.ALUMNI ? 'ALUM-VERIFIED' : '2023BCSE0142'),
-          kycLevel: userRole === ROLES.ADMIN ? 'SUPER-ADMIN Identity Seal' : userRole === ROLES.FACULTY ? 'TIER-3 Institutional Faculty Head' : userRole === ROLES.ALUMNI ? 'TIER-3 Corporate Alumni Verified' : 'TIER-2 Campus Student Verified',
+          kycLevel: profile?.kyc_level || metadata.kyc_level || (userRole === ROLES.ADMIN ? 'SUPER-ADMIN Identity Seal' : userRole === ROLES.FACULTY ? 'TIER-3 Institutional Faculty Head' : userRole === ROLES.ALUMNI ? 'TIER-3 Corporate Alumni Verified' : 'TIER-2 Campus Student Verified'),
           kycId: profile?.kyc_id || metadata.kyc_id || `KYC-${userRole.substring(0, 4)}-${Math.floor(1000 + Math.random() * 9000)}`,
         };
 
         const token = authData.session?.access_token || `supabase_token_${Date.now()}`;
         tokenStorage.setAccessToken(token);
         tokenStorage.setUser(loggedInUser);
-        console.log('[Supabase Auth] Logged in with active role:', userRole, 'name:', userName);
-
-        // Synchronize updated role to Supabase PostgreSQL profile & auth metadata if role was changed
-        if (credentials.role && credentials.role !== profile?.role) {
-          try {
-            await supabase.from('profiles').update({ role: credentials.role }).eq('id', authData.user.id);
-            await supabase.auth.updateUser({ data: { role: credentials.role } });
-          } catch (syncErr) {
-            console.warn('[Supabase Auth] Background role sync notice:', syncErr);
-          }
-        }
+        console.log('[Supabase Auth] Logged in with authentic role:', userRole, 'name:', userName);
 
         return { user: loggedInUser, accessToken: token };
       }
@@ -159,19 +162,29 @@ export const authService = {
         (u) => u.email?.toLowerCase() === credentials.email?.trim()?.toLowerCase()
       );
       if (matched) {
-        const userRole = credentials.role || matched.role || ROLES.STUDENT;
+        const registeredRole = matched.role || ROLES.STUDENT;
+        if (credentials.role && credentials.role !== registeredRole) {
+          const expectedLabel = ROLE_CONFIG[registeredRole]?.label || registeredRole;
+          const selectedLabel = ROLE_CONFIG[credentials.role]?.label || credentials.role;
+          throw new Error(
+            `Role Mismatch: This account (${credentials.email.trim()}) is registered as a ${expectedLabel}. You cannot log in under the ${selectedLabel} role. Please select "${expectedLabel}" above to continue.`
+          );
+        }
         const loggedInUser = {
           ...matched,
-          role: userRole,
-          rollNumber: userRole === ROLES.ADMIN ? 'ADM-SYS-001' : userRole === ROLES.FACULTY ? 'FAC-EMP-4091' : userRole === ROLES.ALUMNI ? 'ALUM-VERIFIED' : (matched.rollNumber || '2023BCSE0142'),
-          kycLevel: userRole === ROLES.ADMIN ? 'SUPER-ADMIN Identity Seal' : userRole === ROLES.FACULTY ? 'TIER-3 Institutional Faculty Head' : userRole === ROLES.ALUMNI ? 'TIER-3 Corporate Alumni Verified' : 'TIER-2 Campus Student Verified',
+          role: registeredRole,
+          rollNumber: registeredRole === ROLES.ADMIN ? 'ADM-SYS-001' : registeredRole === ROLES.FACULTY ? 'FAC-EMP-4091' : registeredRole === ROLES.ALUMNI ? 'ALUM-VERIFIED' : (matched.rollNumber || '2023BCSE0142'),
+          kycLevel: registeredRole === ROLES.ADMIN ? 'SUPER-ADMIN Identity Seal' : registeredRole === ROLES.FACULTY ? 'TIER-3 Institutional Faculty Head' : registeredRole === ROLES.ALUMNI ? 'TIER-3 Corporate Alumni Verified' : 'TIER-2 Campus Student Verified',
         };
-        const token = `knowpass_jwt_${userRole.toLowerCase()}_${Date.now()}`;
+        const token = `knowpass_jwt_${registeredRole.toLowerCase()}_${Date.now()}`;
         tokenStorage.setAccessToken(token);
         tokenStorage.setUser(loggedInUser);
         return { user: loggedInUser, accessToken: token };
       }
     } catch (e) {
+      if (e.message && e.message.startsWith('Role Mismatch:')) {
+        throw e;
+      }
       console.warn('Error reading local registered users:', e);
     }
 

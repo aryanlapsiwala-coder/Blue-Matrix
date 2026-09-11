@@ -97,7 +97,9 @@ export function Login() {
       let userFriendlyMessage = 'Authentication failed. Please check your credentials or register an account.';
 
       const raw = (err?.message || '').toLowerCase();
-      if (raw.includes('invalid login credentials') || raw.includes('invalid password') || raw.includes('not registered') || raw.includes('user not found')) {
+      if (raw.includes('role mismatch') || raw.includes('access denied')) {
+        userFriendlyMessage = err.message;
+      } else if (raw.includes('invalid login credentials') || raw.includes('invalid password') || raw.includes('not registered') || raw.includes('user not found')) {
         userFriendlyMessage = 'Incorrect campus email or password. Please check your credentials or click "Register an Account".';
       } else if (raw.includes('email not confirmed')) {
         userFriendlyMessage = 'Your campus email is pending verification. Please verify your email or use 1-Click Demo Login.';
@@ -105,7 +107,7 @@ export function Login() {
         userFriendlyMessage = 'Unable to reach campus authentication server. Please check your network connection.';
       } else if (raw.includes('rate limit') || raw.includes('too many requests')) {
         userFriendlyMessage = 'Too many login attempts. Please wait a few seconds and try again.';
-      } else if (err?.message && !raw.includes('function') && !raw.includes('undefined') && !raw.includes('(') && !raw.includes('error:')) {
+      } else if (err?.message && !raw.includes('function') && !raw.includes('undefined') && !raw.includes('is not a') && !raw.includes('error:')) {
         userFriendlyMessage = err.message;
       }
 
