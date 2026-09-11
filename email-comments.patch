@@ -1,0 +1,2494 @@
+diff --git a/APPLY-UPDATE.md b/APPLY-UPDATE.md
+new file mode 100644
+index 0000000..adfc416
+--- /dev/null
++++ b/APPLY-UPDATE.md
+@@ -0,0 +1,53 @@
++# Blue Matrix: email codes and comment controls
++
++This update contains only the two requested features: email verification codes for registration/sign-in, and editing/deleting your own comments. It extends the existing KnowPass React/Supabase app.
++
++## What users will see
++
++- Sign-in asks for an email address, sends a code, then opens the account after Supabase verifies it. This is passwordless email-code sign-in. Existing accounts use their existing email address.
++- Registration keeps the existing profile fields and shows email verification before onboarding. Resend has a countdown; invalid/expired codes and delivery failures show errors.
++- Your comments have Edit and Delete controls. Editing offers Save/Cancel and an edited label. Deletion asks for confirmation. Changes persist in the database and remain correct after reopening the post.
++- Production login no longer accepts simulated roles or locally fabricated sessions. Existing valid Supabase sessions can still resume normally.
++
++## Apply the code
++
++Prepared against GitHub main commit `281734fab14ca89b7e014fdca68b963ef568290e`, including the latest contribution/error-boundary fixes.
++
++The download includes `email-comments.patch` and a `changed-files` directory containing the complete updated files. Use the patch against your existing repository so Git can detect conflicting edits.
++
++From a clean checkout of Blue-Matrix, create a branch and apply the patch (replace the example download path):
++
++```bash
++git switch -c email-verification-comments
++git apply --check /path/to/download/email-comments.patch
++git apply /path/to/download/email-comments.patch
++npm ci
++npm test
++npm run build
++```
++
++If the patch check reports conflicts, merge those changes with the newer repository version before proceeding. The `changed-files` folder is also provided for reviewing individual files.
++
++## Supabase setup — required before publishing
++
++1. In the project's SQL Editor, run `supabase/migrations/20260911_email_verification_comments.sql`. It builds on the existing `supabase/schema.sql`; do not rerun the original schema on an existing database. For an empty project, run the schema first, then the migration.
++2. In Authentication, keep the Email provider enabled and turn on Confirm Email. Enable new-user signups for registration.
++3. In Email Templates, paste `supabase/templates/email-code.html` into both **Confirm signup** and **Magic Link**. A suitable subject is `Your KnowPass verification code`. The `{{ .Token }}` placeholder must remain exactly as provided. [Supabase email OTP documentation](https://supabase.com/docs/guides/auth/auth-email-passwordless).
++4. Configure a working custom SMTP sender for public users. Supabase's default sender is restricted to project team addresses and is unsuitable for general signups. If your project already has working custom SMTP, retain it. [Supabase SMTP documentation](https://supabase.com/docs/guides/auth/auth-smtp).
++5. Keep the Site URL set to `https://blue-matrix-ten.vercel.app`. The app accepts numeric codes of 6–10 digits and uses the expiration enforced by Supabase.
++
++The website already uses `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. Keep these configured in Vercel for the same Supabase project. Never put an SMTP password or Supabase service-role key in a `VITE_` variable.
++
++## Publish and confirm delivery
++
++After the SQL and email settings are ready, push the branch and merge the reviewed update using an account with repository write access. Publish through your existing Vercel project.
++
++Check with two accounts: register and receive a real email code; reject an incorrect code; verify the correct code; sign out and sign in again; post a comment, edit it, reload, delete it, and reload again. The second account should see no edit/delete controls for the first account's comment.
++
++## Existing data and verification limits
++
++The migration preserves profile IDs, roles, posts and existing database comments. It links profiles only after the account's email is verified. Profile identity and comment ownership are protected by database rules, while existing profile editing remains supported.
++
++Older comments often stored only a display name and no account ID. Their authors cannot be established safely from a name alone. Those comments remain visible and read-only; comments with a trusted stored account/profile link receive ownership. Old browser-only comment caches are no longer merged into database results, so deleted comments do not reappear.
++
++Validation completed: all 14 automated tests passed, and the Vite production build succeeded. The tests exercise real PostgreSQL row permissions in PGlite, code verification responses, authentication state, and the React sign-in/registration/comment controls. They do not send live email or apply changes to the hosted Supabase/Vercel project. Complete the live delivery check after setup.
+diff --git a/package-lock.json b/package-lock.json
+index 2cea284..0d559f3 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -19,9 +19,12 @@
+         "tailwind-merge": "^3.0.1"
+       },
+       "devDependencies": {
++        "@electric-sql/pglite": "^0.5.3",
+         "@vitejs/plugin-react": "^4.3.4",
+         "autoprefixer": "^10.4.20",
++        "esbuild": "^0.25.12",
+         "postcss": "^8.5.2",
++        "react-test-renderer": "^18.3.1",
+         "tailwindcss": "^3.4.17",
+         "vite": "^6.1.0"
+       }
+@@ -321,6 +324,13 @@
+         "node": ">=6.9.0"
+       }
+     },
++    "node_modules/@electric-sql/pglite": {
++      "version": "0.5.3",
++      "resolved": "https://registry.npmjs.org/@electric-sql/pglite/-/pglite-0.5.3.tgz",
++      "integrity": "sha512-iTTYbA5Uesrl+N7zss0J5LopT7KE4j9aymYo+EZZh+rZbARQCUQOs+n2pay64JRUpc3fCkpfrniTNJnvYzOE+g==",
++      "dev": true,
++      "license": "Apache-2.0"
++    },
+     "node_modules/@esbuild/aix-ppc64": {
+       "version": "0.25.12",
+       "resolved": "https://registry.npmjs.org/@esbuild/aix-ppc64/-/aix-ppc64-0.25.12.tgz",
+@@ -821,9 +831,6 @@
+         "x64"
+       ],
+       "dev": true,
+-      "libc": [
+-        "glibc"
+-      ],
+       "license": "MIT",
+       "optional": true,
+       "os": [
+@@ -1005,9 +1012,6 @@
+         "arm"
+       ],
+       "dev": true,
+-      "libc": [
+-        "glibc"
+-      ],
+       "license": "MIT",
+       "optional": true,
+       "os": [
+@@ -1022,9 +1026,6 @@
+         "arm"
+       ],
+       "dev": true,
+-      "libc": [
+-        "musl"
+-      ],
+       "license": "MIT",
+       "optional": true,
+       "os": [
+@@ -1039,9 +1040,6 @@
+         "arm64"
+       ],
+       "dev": true,
+-      "libc": [
+-        "glibc"
+-      ],
+       "license": "MIT",
+       "optional": true,
+       "os": [
+@@ -1056,9 +1054,6 @@
+         "arm64"
+       ],
+       "dev": true,
+-      "libc": [
+-        "musl"
+-      ],
+       "license": "MIT",
+       "optional": true,
+       "os": [
+@@ -1073,9 +1068,6 @@
+         "loong64"
+       ],
+       "dev": true,
+-      "libc": [
+-        "glibc"
+-      ],
+       "license": "MIT",
+       "optional": true,
+       "os": [
+@@ -1090,9 +1082,6 @@
+         "loong64"
+       ],
+       "dev": true,
+-      "libc": [
+-        "musl"
+-      ],
+       "license": "MIT",
+       "optional": true,
+       "os": [
+@@ -1107,9 +1096,6 @@
+         "ppc64"
+       ],
+       "dev": true,
+-      "libc": [
+-        "glibc"
+-      ],
+       "license": "MIT",
+       "optional": true,
+       "os": [
+@@ -1124,9 +1110,6 @@
+         "ppc64"
+       ],
+       "dev": true,
+-      "libc": [
+-        "musl"
+-      ],
+       "license": "MIT",
+       "optional": true,
+       "os": [
+@@ -1141,9 +1124,6 @@
+         "riscv64"
+       ],
+       "dev": true,
+-      "libc": [
+-        "glibc"
+-      ],
+       "license": "MIT",
+       "optional": true,
+       "os": [
+@@ -1158,9 +1138,6 @@
+         "riscv64"
+       ],
+       "dev": true,
+-      "libc": [
+-        "musl"
+-      ],
+       "license": "MIT",
+       "optional": true,
+       "os": [
+@@ -1175,9 +1152,6 @@
+         "s390x"
+       ],
+       "dev": true,
+-      "libc": [
+-        "glibc"
+-      ],
+       "license": "MIT",
+       "optional": true,
+       "os": [
+@@ -1192,9 +1166,6 @@
+         "x64"
+       ],
+       "dev": true,
+-      "libc": [
+-        "glibc"
+-      ],
+       "license": "MIT",
+       "optional": true,
+       "os": [
+@@ -1209,9 +1180,6 @@
+         "x64"
+       ],
+       "dev": true,
+-      "libc": [
+-        "musl"
+-      ],
+       "license": "MIT",
+       "optional": true,
+       "os": [
+@@ -3044,6 +3012,49 @@
+         "react-dom": ">=16.8"
+       }
+     },
++    "node_modules/react-shallow-renderer": {
++      "version": "16.15.0",
++      "resolved": "https://registry.npmjs.org/react-shallow-renderer/-/react-shallow-renderer-16.15.0.tgz",
++      "integrity": "sha512-oScf2FqQ9LFVQgA73vr86xl2NaOIX73rh+YFqcOp68CWj56tSfgtGKrEbyhCj0rSijyG9M1CYprTh39fBi5hzA==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "object-assign": "^4.1.1",
++        "react-is": "^16.12.0 || ^17.0.0 || ^18.0.0"
++      },
++      "peerDependencies": {
++        "react": "^16.0.0 || ^17.0.0 || ^18.0.0"
++      }
++    },
++    "node_modules/react-shallow-renderer/node_modules/react-is": {
++      "version": "18.3.1",
++      "resolved": "https://registry.npmjs.org/react-is/-/react-is-18.3.1.tgz",
++      "integrity": "sha512-/LLMVyas0ljjAtoYiPqYiL8VWXzUUdThrmU5+n20DZv+a+ClRoevUzw5JxU+Ieh5/c87ytoTBV9G1FiKfNJdmg==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/react-test-renderer": {
++      "version": "18.3.1",
++      "resolved": "https://registry.npmjs.org/react-test-renderer/-/react-test-renderer-18.3.1.tgz",
++      "integrity": "sha512-KkAgygexHUkQqtvvx/otwxtuFu5cVjfzTCtjXLH9boS19/Nbtg84zS7wIQn39G8IlrhThBpQsMKkq5ZHZIYFXA==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "react-is": "^18.3.1",
++        "react-shallow-renderer": "^16.15.0",
++        "scheduler": "^0.23.2"
++      },
++      "peerDependencies": {
++        "react": "^18.3.1"
++      }
++    },
++    "node_modules/react-test-renderer/node_modules/react-is": {
++      "version": "18.3.1",
++      "resolved": "https://registry.npmjs.org/react-is/-/react-is-18.3.1.tgz",
++      "integrity": "sha512-/LLMVyas0ljjAtoYiPqYiL8VWXzUUdThrmU5+n20DZv+a+ClRoevUzw5JxU+Ieh5/c87ytoTBV9G1FiKfNJdmg==",
++      "dev": true,
++      "license": "MIT"
++    },
+     "node_modules/read-cache": {
+       "version": "1.0.2",
+       "resolved": "https://registry.npmjs.org/read-cache/-/read-cache-1.0.2.tgz",
+diff --git a/package.json b/package.json
+index 17bbedc..6342840 100644
+--- a/package.json
++++ b/package.json
+@@ -6,7 +6,8 @@
+   "scripts": {
+     "dev": "vite --force",
+     "build": "vite build",
+-    "preview": "vite preview"
++    "preview": "vite preview",
++    "test": "node --test tests/*.test.mjs"
+   },
+   "dependencies": {
+     "@supabase/supabase-js": "^2.112.4",
+@@ -20,9 +21,12 @@
+     "tailwind-merge": "^3.0.1"
+   },
+   "devDependencies": {
++    "@electric-sql/pglite": "^0.5.3",
+     "@vitejs/plugin-react": "^4.3.4",
+     "autoprefixer": "^10.4.20",
++    "esbuild": "^0.25.12",
+     "postcss": "^8.5.2",
++    "react-test-renderer": "^18.3.1",
+     "tailwindcss": "^3.4.17",
+     "vite": "^6.1.0"
+   },
+diff --git a/src/components/common/CommentThread.jsx b/src/components/common/CommentThread.jsx
+new file mode 100644
+index 0000000..f51a658
+--- /dev/null
++++ b/src/components/common/CommentThread.jsx
+@@ -0,0 +1,115 @@
++import React, { useEffect, useRef, useState } from 'react';
++import { MessageSquare, Send } from 'lucide-react';
++import { Button } from './Button';
++import { knowledgeService } from '../../services/knowledgeService';
++import { canManageComment } from '../../services/comments';
++
++export function CommentThread({ entryId, authUserId, onCommentsChange }) {
++  const [comments, setComments] = useState([]);
++  const [text, setText] = useState('');
++  const [editing, setEditing] = useState(null);
++  const [draft, setDraft] = useState('');
++  const [deleting, setDeleting] = useState(null);
++  const [busy, setBusy] = useState(false);
++  const [loading, setLoading] = useState(true);
++  const [error, setError] = useState('');
++  const [loadError, setLoadError] = useState(false);
++  const [retry, setRetry] = useState(0);
++  const mounted = useRef(false);
++
++  useEffect(() => {
++    mounted.current = true;
++    return () => { mounted.current = false; };
++  }, []);
++  useEffect(() => {
++    let active = true;
++    setLoading(true); setError(''); setLoadError(false);
++    knowledgeService.getComments(entryId).then((rows) => {
++      if (!active) return;
++      setComments(rows);
++      onCommentsChange(entryId, rows);
++    }).catch(() => {
++      if (active) { setError('Unable to load comments. Please try again.'); setLoadError(true); }
++    }).finally(() => { if (active) setLoading(false); });
++    return () => { active = false; };
++  }, [entryId, onCommentsChange, retry]);
++
++  const persist = async (operation) => {
++    if (busy || loading || loadError) return;
++    setBusy(true); setError('');
++    try { await operation(); }
++    catch (err) { if (mounted.current) setError(err.message || 'Unable to save your comment. Please try again.'); }
++    finally { if (mounted.current) setBusy(false); }
++  };
++  const replace = (rows) => {
++    if (!mounted.current) return;
++    setComments(rows); onCommentsChange(entryId, rows);
++  };
++  const add = (event) => {
++    event.preventDefault();
++    if (!text.trim()) return;
++    return persist(async () => {
++      const saved = await knowledgeService.addComment(entryId, { text });
++      replace([...comments, saved]);
++      if (mounted.current) setText('');
++    });
++  };
++  const edit = (event) => {
++    event.preventDefault();
++    return persist(async () => {
++      const saved = await knowledgeService.editComment(entryId, editing, draft);
++      replace(comments.map((comment) => comment.id === editing ? saved : comment));
++      if (mounted.current) setEditing(null);
++    });
++  };
++  const remove = (id) => persist(async () => {
++    await knowledgeService.deleteComment(entryId, id);
++    replace(comments.filter((comment) => comment.id !== id));
++    if (mounted.current) setDeleting(null);
++  });
++
++  return <section aria-label="Post comments" className="space-y-4 pt-4 border-t border-slate-100">
++    <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
++      <MessageSquare className="w-4 h-4 text-indigo-600" /> Campus Discussion & Questions ({comments.length})
++    </h4>
++    {loading && <p role="status" className="text-sm text-slate-500">Loading comments…</p>}
++    {error && <div role="alert" className="text-sm text-rose-700 rounded-xl bg-rose-50 p-3">
++      {error} {loadError && <button type="button" onClick={() => setRetry((n) => n + 1)} className="font-semibold underline">Try again</button>}
++    </div>}
++    {!loading && !loadError && comments.length === 0 && <p className="text-sm text-slate-500">No questions yet. Be the first to ask!</p>}
++    <div className="space-y-3">
++      {comments.map((comment) => <article key={comment.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-sm">
++        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
++          <span className="font-bold text-slate-900">{comment.user} <span className="text-xs text-indigo-600">({comment.role})</span></span>
++          <span className="text-xs text-slate-500">{comment.time}{comment.edited && ' · edited'}</span>
++        </div>
++        {editing === comment.id ? <form onSubmit={edit} className="space-y-2">
++          <textarea aria-label="Edit comment" required maxLength={2000} rows={3} value={draft}
++            onChange={(event) => setDraft(event.target.value)} disabled={busy} autoFocus
++            className="w-full rounded-lg border border-slate-300 p-3 text-base focus:ring-2 focus:ring-indigo-200 outline-none" />
++          <div className="flex gap-2">
++            <Button type="submit" size="sm" loading={busy} disabled={!draft.trim()}>Save</Button>
++            <Button size="sm" variant="secondary" disabled={busy} onClick={() => setEditing(null)}>Cancel</Button>
++          </div>
++        </form> : <p className="text-slate-600 whitespace-pre-wrap break-words">{comment.text}</p>}
++        {canManageComment(comment, authUserId) && editing !== comment.id && <div className="mt-3 flex flex-wrap items-center gap-3">
++          {deleting === comment.id ? <>
++            <span className="text-slate-700">Delete this comment?</span>
++            <Button size="sm" variant="danger" loading={busy} onClick={() => remove(comment.id)}>Delete</Button>
++            <Button size="sm" variant="secondary" disabled={busy} onClick={() => setDeleting(null)}>Cancel</Button>
++          </> : <>
++            <button type="button" disabled={busy} className="text-indigo-600 font-semibold disabled:opacity-50" onClick={() => { setEditing(comment.id); setDraft(comment.text); setDeleting(null); setError(''); }}>Edit</button>
++            <button type="button" disabled={busy} className="text-rose-600 font-semibold disabled:opacity-50" onClick={() => { setDeleting(comment.id); setEditing(null); setError(''); }}>Delete</button>
++          </>}
++        </div>}
++      </article>)}
++    </div>
++    <form onSubmit={add} className="flex gap-2">
++      <input type="text" aria-label="Add a comment" maxLength={2000} required value={text}
++        onChange={(event) => setText(event.target.value)} disabled={busy || loading || loadError}
++        placeholder="Ask a question or thank the contributor…"
++        className="min-w-0 flex-1 text-base px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500" />
++      <Button type="submit" aria-label="Post comment" loading={busy} disabled={!text.trim() || loading || loadError}><Send className="w-4 h-4" /></Button>
++    </form>
++  </section>;
++}
+diff --git a/src/components/common/EmailVerification.jsx b/src/components/common/EmailVerification.jsx
+new file mode 100644
+index 0000000..866baa0
+--- /dev/null
++++ b/src/components/common/EmailVerification.jsx
+@@ -0,0 +1,60 @@
++import React, { useEffect, useState } from 'react';
++import { ArrowLeft, Mail } from 'lucide-react';
++import { Button } from './Button';
++
++export function EmailVerification({ email, onVerify, onResend, onBack }) {
++  const [code, setCode] = useState('');
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState('');
++  const [message, setMessage] = useState('');
++  const [seconds, setSeconds] = useState(60);
++  useEffect(() => {
++    const timer = setInterval(() => setSeconds((n) => Math.max(0, n - 1)), 1000);
++    return () => clearInterval(timer);
++  }, []);
++
++  const verify = async (event) => {
++    event.preventDefault();
++    if (busy) return;
++    setBusy(true); setError(''); setMessage('');
++    try { await onVerify({ email, token: code }); }
++    catch (err) { setError(err.message || 'Unable to verify the code. Please try again.'); }
++    finally { setBusy(false); }
++  };
++  const resend = async () => {
++    if (busy || seconds > 0) return;
++    setBusy(true); setError(''); setMessage('');
++    try {
++      await onResend();
++      setCode(''); setSeconds(60); setMessage('A new code has been sent. Check your inbox and spam folder.');
++    } catch (err) { setError(err.message || 'Unable to send a new code. Please try again.'); }
++    finally { setBusy(false); }
++  };
++
++  return (
++    <div className="space-y-5">
++      <Mail className="w-9 h-9 text-indigo-600" aria-hidden="true" />
++      <div>
++        <h2 className="text-xl font-bold text-slate-900">Verify your email</h2>
++        <p className="text-sm text-slate-600 mt-2">Enter the code sent to <strong className="break-words">{email}</strong>.</p>
++        <p className="text-sm text-slate-500 mt-1">Check your spam folder if it hasn’t arrived.</p>
++      </div>
++      {error && <p role="alert" className="text-sm text-rose-700 bg-rose-50 border border-rose-200 p-3 rounded-xl">{error}</p>}
++      {message && <p role="status" className="text-sm text-emerald-700">{message}</p>}
++      <form onSubmit={verify} className="space-y-4">
++        <label htmlFor="email-code" className="block text-sm font-semibold text-slate-700">Verification code</label>
++        <input id="email-code" name="code" type="text" inputMode="numeric" autoComplete="one-time-code"
++          autoFocus required minLength={6} maxLength={10} pattern="[0-9]{6,10}"
++          value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} disabled={busy}
++          className="w-full rounded-xl border border-slate-300 px-4 py-3 text-xl tracking-widest focus:ring-2 focus:ring-indigo-200 outline-none" />
++        <Button type="submit" loading={busy} disabled={code.length < 6} className="w-full">Verify email and continue</Button>
++      </form>
++      <button type="button" onClick={resend} disabled={busy || seconds > 0} className="text-sm text-indigo-600 font-semibold disabled:text-slate-400">
++        {seconds > 0 ? `Resend code in ${seconds}s` : 'Resend code'}
++      </button>
++      <button type="button" onClick={onBack} disabled={busy} className="flex items-center gap-2 text-sm text-slate-600 disabled:opacity-50">
++        <ArrowLeft className="w-4 h-4" /> Use a different email
++      </button>
++    </div>
++  );
++}
+diff --git a/src/context/AuthContext.jsx b/src/context/AuthContext.jsx
+index cae07a7..db23a54 100644
+--- a/src/context/AuthContext.jsx
++++ b/src/context/AuthContext.jsx
+@@ -1,7 +1,6 @@
+ import React, { createContext, useState, useEffect, useCallback } from 'react';
+ import { tokenStorage } from '../utils/tokenStorage';
+-import { authService, DEMO_USERS } from '../services/authService';
+-import { ROLES } from '../constants/roles';
++import { authService, DEMO_USERS, demoEnabled } from '../services/authService';
+ import { pushCampusNotification } from '../services/notificationService';
+ import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+ 
+@@ -11,57 +10,61 @@ export function AuthProvider({ children }) {
+   const [user, setUser] = useState(null);
+   const [loading, setLoading] = useState(true);
+ 
+-  // Initialize auth state from local storage (defaults to null so Login page opens first)
++  // Restore a server-verified Supabase session; cached profile data is not authentication.
+   useEffect(() => {
+-    const initAuth = () => {
+-      const storedUser = tokenStorage.getUser();
+-      const token = tokenStorage.getAccessToken();
+-
+-      if (storedUser && token) {
+-        setUser(storedUser);
+-      } else {
+-        setUser(null);
++    let active = true;
++    let revision = 0;
++    let restoreTimer;
++    const restore = async () => {
++      const current = ++revision;
++      try {
++        const verifiedUser = await authService.getCurrentUser();
++        if (active && current === revision) setUser(verifiedUser);
++      } catch {
++        if (active && current === revision) { setUser(null); tokenStorage.clearAuth(); }
++      } finally {
++        if (active) setLoading(false);
+       }
+-      setLoading(false);
+     };
+-
+-    initAuth();
+-
+-    // Listen for unauthorized events dispatched by axios interceptor
+-    const handleUnauthorized = () => {
+-      setUser(null);
+-      tokenStorage.clearAuth();
++    const clear = () => { revision++; setUser(null); tokenStorage.clearAuth(); };
++    restore();
++    const subscription = supabase?.auth.onAuthStateChange((event, session) => {
++      if (event === 'SIGNED_OUT') clear();
++      if (event === 'TOKEN_REFRESHED') {
++        tokenStorage.setAccessToken(session?.access_token);
++        tokenStorage.setRefreshToken(session?.refresh_token);
++      }
++      // Run database/profile work outside Supabase's auth-event lock.
++      if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
++        clearTimeout(restoreTimer);
++        restoreTimer = setTimeout(restore, 0);
++      }
++    }).data.subscription;
++    window.addEventListener('auth:unauthorized', clear);
++    return () => {
++      active = false; revision++; clearTimeout(restoreTimer);
++      subscription?.unsubscribe();
++      window.removeEventListener('auth:unauthorized', clear);
+     };
+-
+-    window.addEventListener('auth:unauthorized', handleUnauthorized);
+-    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+   }, []);
+ 
+   const login = useCallback(async (credentials) => {
+-    setLoading(true);
+-    try {
+-      const { user: loggedInUser } = await authService.login(credentials);
+-      setUser(loggedInUser);
+-      return loggedInUser;
+-    } finally {
+-      setLoading(false);
+-    }
++    const result = await authService.login(credentials);
++    if (result.user && demoEnabled) setUser(result.user);
++    return result;
+   }, []);
+ 
+-  const register = useCallback(async (userData) => {
+-    setLoading(true);
+-    try {
+-      const { user: registeredUser } = await authService.register(userData);
+-      setUser(registeredUser);
+-      return registeredUser;
+-    } finally {
+-      setLoading(false);
+-    }
++  const register = useCallback((profile) => authService.register(profile), []);
++
++  const verifyEmail = useCallback(async (details) => {
++    const verifiedUser = await authService.verifyEmail(details);
++    setUser(verifiedUser);
++    return verifiedUser;
+   }, []);
+ 
+   const switchRole = useCallback((newRole) => {
+-    if (DEMO_USERS[newRole]) {
+-      const demoUser = DEMO_USERS[newRole];
++    if (demoEnabled && DEMO_USERS[newRole]) {
++      const demoUser = { ...DEMO_USERS[newRole], isDemo: true };
+       tokenStorage.setUser(demoUser);
+       tokenStorage.setAccessToken(`mock_jwt_${newRole.toLowerCase()}_token`);
+       setUser(demoUser);
+@@ -129,6 +132,7 @@ export function AuthProvider({ children }) {
+     loading,
+     login,
+     register,
++    verifyEmail,
+     updateUser,
+     awardPoints,
+     switchRole,
+diff --git a/src/pages/KnowledgeBase.jsx b/src/pages/KnowledgeBase.jsx
+index ef1667e..fe36c28 100644
+--- a/src/pages/KnowledgeBase.jsx
++++ b/src/pages/KnowledgeBase.jsx
+@@ -1,8 +1,9 @@
+-import React, { useState, useEffect, useMemo } from 'react';
++import React, { useState, useEffect, useMemo, useCallback } from 'react';
+ import { useSearchParams } from 'react-router-dom';
+ import { useAuth } from '../hooks/useAuth';
+ import { Card, CardHeader } from '../components/common/Card';
+ import { Button } from '../components/common/Button';
++import { CommentThread } from '../components/common/CommentThread';
+ import { knowledgeService, SAMPLE_KNOWLEDGE_ITEMS } from '../services/knowledgeService';
+ import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+ import { ROLES, ROLE_CONFIG } from '../constants/roles';
+@@ -131,7 +132,6 @@ export function KnowledgeBase() {
+ 
+   // Modal State
+   const [activeItem, setActiveItem] = useState(null);
+-  const [newCommentText, setNewCommentText] = useState('');
+   const [shareToast, setShareToast] = useState(false);
+ 
+   // Author Edit Modal State
+@@ -351,20 +351,11 @@ export function KnowledgeBase() {
+     }
+   };
+ 
+-  // Open Detail Modal and fetch live comments
+-  const handleOpenDetail = async (item) => {
+-    setActiveItem(item);
+-    try {
+-      const dbComments = await knowledgeService.getComments(item.id);
+-      if (dbComments && dbComments.length > 0) {
+-        setActiveItem((prev) =>
+-          prev && prev.id === item.id ? { ...prev, comments: dbComments } : prev
+-        );
+-      }
+-    } catch (err) {
+-      console.warn('Error loading comments from Supabase:', err);
+-    }
+-  };
++  const handleOpenDetail = (item) => setActiveItem(item);
++  const handleCommentsChange = useCallback((entryId, comments) => {
++    setItems((previous) => previous.map((item) => item.id === entryId ? { ...item, comments } : item));
++    setActiveItem((previous) => previous?.id === entryId ? { ...previous, comments } : previous);
++  }, []);
+ 
+   // Verify Resource Handler (for Faculty, Tech, Admin)
+   const handleVerifyResource = async (id) => {
+@@ -404,31 +395,6 @@ export function KnowledgeBase() {
+     });
+   };
+ 
+-  // Add Comment Handler with Supabase Persistence
+-  const handleAddComment = async (e) => {
+-    e.preventDefault();
+-    if (!newCommentText.trim() || !activeItem) return;
+-
+-    const textToSubmit = newCommentText.trim();
+-    setNewCommentText('');
+-
+-    const savedComment = await knowledgeService.addComment(activeItem.id, {
+-      user: user?.name || 'Campus Scholar',
+-      role: role || ROLES.STUDENT,
+-      text: textToSubmit,
+-    });
+-
+-    const updatedComments = [...(activeItem.comments || []), savedComment];
+-
+-    setItems((prev) =>
+-      prev.map((item) =>
+-        item.id === activeItem.id ? { ...item, comments: updatedComments } : item
+-      )
+-    );
+-
+-    setActiveItem((prev) => ({ ...prev, comments: updatedComments }));
+-  };
+-
+   // Author Edit Handlers
+   const handleStartEdit = (item) => {
+     if (!canUserEdit(item)) {
+@@ -1289,55 +1255,8 @@ export function KnowledgeBase() {
+                 </div>
+               )}
+ 
+-              {/* Discussion & Comments Stream */}
+-              <div className="space-y-4 pt-4 border-t border-slate-100">
+-                <div className="flex items-center justify-between">
+-                  <h4 className="font-bold text-slate-900 text-xs flex items-center gap-2">
+-                    <MessageSquare className="w-4 h-4 text-indigo-600" />
+-                    Campus Discussion & Questions ({activeItem.comments?.length || 0})
+-                  </h4>
+-                </div>
+-
+-                <div className="space-y-2.5">
+-                  {Array.isArray(activeItem.comments) && activeItem.comments.length > 0 ? (
+-                    activeItem.comments.map((comm) => (
+-                      <div
+-                        key={comm.id}
+-                        className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs"
+-                      >
+-                        <div className="flex items-center justify-between mb-1">
+-                          <span className="font-bold text-slate-900">
+-                            {comm.user}{' '}
+-                            <span className="text-[10px] text-indigo-600 font-semibold">
+-                              ({comm.role})
+-                            </span>
+-                          </span>
+-                          <span className="text-[10px] text-slate-400">{comm.time}</span>
+-                        </div>
+-                        <p className="text-slate-600">{comm.text}</p>
+-                      </div>
+-                    ))
+-                  ) : (
+-                    <p className="text-xs text-slate-400 italic">
+-                      No questions yet. Be the first to ask!
+-                    </p>
+-                  )}
+-                </div>
+-
+-                {/* Comment Input */}
+-                <form onSubmit={handleAddComment} className="flex gap-2">
+-                  <input
+-                    type="text"
+-                    value={newCommentText}
+-                    onChange={(e) => setNewCommentText(e.target.value)}
+-                    placeholder="Ask a clarifying question or thank the contributor..."
+-                    className="flex-1 text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500"
+-                  />
+-                  <Button type="submit" size="sm" disabled={!newCommentText.trim()}>
+-                    <Send className="w-3.5 h-3.5" />
+-                  </Button>
+-                </form>
+-              </div>
++              <CommentThread key={activeItem.id} entryId={activeItem.id} authUserId={user?.authId}
++                onCommentsChange={handleCommentsChange} />
+             </div>
+ 
+             {/* Modal Bottom Actions */}
+diff --git a/src/pages/Login.jsx b/src/pages/Login.jsx
+index 597be74..3211186 100644
+--- a/src/pages/Login.jsx
++++ b/src/pages/Login.jsx
+@@ -2,393 +2,69 @@ import React, { useState } from 'react';
+ import { useNavigate, useLocation, Link } from 'react-router-dom';
+ import { useAuth } from '../hooks/useAuth';
+ import { ROUTES } from '../constants/routes';
+-import { ROLES, ROLE_CONFIG } from '../constants/roles';
+-import {
+-  GraduationCap,
+-  Lock,
+-  Mail,
+-  ArrowRight,
+-  ShieldCheck,
+-  CheckCircle2,
+-  Eye,
+-  EyeOff,
+-  AlertCircle,
+-  HelpCircle,
+-  X
+-} from 'lucide-react';
++import { GraduationCap, Mail, ArrowRight } from 'lucide-react';
+ import { Button } from '../components/common/Button';
++import { EmailVerification } from '../components/common/EmailVerification';
+ import { InteractiveDotBackground } from '../components/ui/interactive-dot-background';
++import { demoEnabled, DEMO_USERS } from '../services/authService';
+ 
+ export function Login() {
+-  const { login } = useAuth();
++  const { login, verifyEmail } = useAuth();
+   const navigate = useNavigate();
+   const location = useLocation();
+   const from = location.state?.from?.pathname || ROUTES.DASHBOARD;
+-
+-  const [formData, setFormData] = useState({
+-    email: '',
+-    password: '',
+-    role: ROLES.STUDENT,
+-    rememberMe: true,
+-  });
+-
+-  const [showPassword, setShowPassword] = useState(false);
+-  const [errors, setErrors] = useState({});
+-  const [touched, setTouched] = useState({});
++  const [email, setEmail] = useState('');
++  const [pending, setPending] = useState(null);
++  const [error, setError] = useState('');
+   const [loading, setLoading] = useState(false);
+-  const [showForgotModal, setShowForgotModal] = useState(false);
+-  const [forgotEmail, setForgotEmail] = useState('');
+-  const [forgotSent, setForgotSent] = useState(false);
+-
+-  const validateField = (name, value) => {
+-    let error = '';
+-    if (name === 'email') {
+-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+-      if (!value.trim()) error = 'Campus email is required';
+-      else if (!emailRegex.test(value.trim())) error = 'Please enter a valid campus email';
+-    } else if (name === 'password') {
+-      if (!value) error = 'Password is required';
+-      else if (value.length < 4) error = 'Password must be at least 4 characters';
+-    }
+-    return error;
+-  };
+-
+-  const handleBlur = (field) => {
+-    setTouched((prev) => ({ ...prev, [field]: true }));
+-    const error = validateField(field, formData[field]);
+-    setErrors((prev) => ({ ...prev, [field]: error }));
+-  };
+-
+-  const handleChange = (e) => {
+-    const { name, value, type, checked } = e.target;
+-    setFormData((prev) => ({
+-      ...prev,
+-      [name]: type === 'checkbox' ? checked : value,
+-    }));
+-    if (touched[name]) {
+-      const error = validateField(name, value);
+-      setErrors((prev) => ({ ...prev, [name]: error }));
+-    }
+-  };
+-
+-  const handleSubmit = async (e) => {
+-    e.preventDefault();
+-
+-    const emailErr = validateField('email', formData.email);
+-    const passErr = validateField('password', formData.password);
+-
+-    if (emailErr || passErr) {
+-      setErrors({ email: emailErr, password: passErr });
+-      setTouched({ email: true, password: true });
+-      return;
+-    }
+-
+-    setLoading(true);
+-    setErrors({});
+-    try {
+-      await login({
+-        email: formData.email,
+-        password: formData.password,
+-      });
+-      navigate(from, { replace: true });
+-    } catch (err) {
+-      setErrors({
+-        form: err.message || 'User not registered or invalid password. Please check your credentials.',
+-      });
+-    } finally {
+-      setLoading(false);
+-    }
++  const sendCode = async (event) => {
++    event.preventDefault();
++    if (loading) return;
++    setLoading(true); setError('');
++    try { setPending(await login({ email })); }
++    catch (err) { setError(err.message || 'Unable to send a verification code. Please try again.'); }
++    finally { setLoading(false); }
+   };
+-
+-  const handleQuickDemoLogin = async (roleToUse) => {
+-    setLoading(true);
+-    setErrors({});
+-    try {
+-      await login({
+-        isQuickDemo: true,
+-        role: roleToUse,
+-      });
+-      navigate(from, { replace: true });
+-    } catch (err) {
+-      setErrors({
+-        form: err.message || 'Demo login error.',
+-      });
+-    } finally {
+-      setLoading(false);
+-    }
+-  };
+-
+-  const handleSendReset = (e) => {
+-    e.preventDefault();
+-    if (!forgotEmail) return;
+-    setForgotSent(true);
+-    setTimeout(() => {
+-      setForgotSent(false);
+-      setShowForgotModal(false);
+-      setForgotEmail('');
+-    }, 2000);
++  const quickDemo = async (role) => {
++    setLoading(true); setError('');
++    try { await login({ isQuickDemo: true, role }); navigate(from, { replace: true }); }
++    catch (err) { setError(err.message); }
++    finally { setLoading(false); }
+   };
+-
+   return (
+     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
+       <InteractiveDotBackground />
+       <div className="max-w-md w-full relative z-10">
+-        {/* Brand Header */}
+         <div className="text-center mb-8">
+-          <div className="inline-flex items-center justify-center w-14 h-14 bg-indigo-600 rounded-2xl text-white shadow-xl shadow-indigo-500/30 mb-4">
+-            <GraduationCap className="w-8 h-8" />
+-          </div>
+-          <h1 className="text-3xl font-extrabold text-white tracking-tight">
+-            Know<span className="text-indigo-400">Pass</span>
+-          </h1>
+-          <p className="text-sm text-slate-300 mt-1">
+-            Campus Knowledge Management & Resource Repository
+-          </p>
++          <div className="inline-flex items-center justify-center w-14 h-14 bg-indigo-600 rounded-2xl text-white shadow-xl shadow-indigo-500/30 mb-4"><GraduationCap className="w-8 h-8" /></div>
++          <h1 className="text-3xl font-extrabold text-white tracking-tight">Know<span className="text-indigo-400">Pass</span></h1>
++          <p className="text-sm text-slate-300 mt-1">Campus Knowledge Management & Resource Repository</p>
+         </div>
+-
+-        {/* Login Card */}
+         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-100">
+-          <div className="mb-6">
++          {pending ? <EmailVerification email={pending.email}
++            onVerify={async (details) => { await verifyEmail(details); navigate(from, { replace: true }); }}
++            onResend={() => login({ email: pending.email })} onBack={() => setPending(null)} /> : <>
+             <h2 className="text-xl font-bold text-slate-900">Sign in to your account</h2>
+-            <p className="text-xs text-slate-500 mt-1">
+-              Select your role and authenticate with campus credentials
+-            </p>
+-          </div>
+-
+-          {errors.form && (
+-            <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
+-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+-              <span>{errors.form}</span>
+-            </div>
+-          )}
+-
+-          {/* Simulated Role Selection for Login */}
+-          <div className="mb-5">
+-            <label className="block text-xs font-semibold text-slate-700 mb-2">
+-              Select Simulated Campus Role:
+-            </label>
+-            <div className="grid grid-cols-2 gap-2">
+-              {[
+-                { role: ROLES.STUDENT, label: '🎓 Junior Student' },
+-                { role: ROLES.ALUMNI, label: '💼 Passed-Out Alumni' },
+-                { role: ROLES.FACULTY, label: '🏛️ Faculty' },
+-                { role: ROLES.ADMIN, label: '🛡️ Administrator' },
+-              ].map((item) => {
+-                const isSelected = formData.role === item.role;
+-                return (
+-                  <button
+-                    key={item.role}
+-                    type="button"
+-                    onClick={() => {
+-                      setFormData((prev) => ({
+-                        ...prev,
+-                        role: item.role,
+-                        email: prev.email ? prev.email : (item.role === ROLES.ALUMNI ? 'alumni.vikram@nvidia.com' : `${item.role.toLowerCase()}@campus.edu`),
+-                      }));
+-                    }}
+-                    className={`flex items-center justify-between p-2.5 rounded-xl border text-xs text-left transition ${
+-                      isSelected
+-                        ? 'border-indigo-600 bg-indigo-50/70 text-indigo-900 font-bold ring-1 ring-indigo-600'
+-                        : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-slate-50/50'
+-                    }`}
+-                  >
+-                    <span>{item.label}</span>
+-                    {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" />}
+-                  </button>
+-                );
+-              })}
+-            </div>
+-          </div>
+-
+-          <form onSubmit={handleSubmit} className="space-y-4">
+-            {/* Campus Email / Personal Email */}
+-            <div>
+-              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+-                {formData.role === ROLES.ALUMNI ? 'Personal / Work Email (No College ID Required)' : 'Campus Email / Student ID'}{' '}
+-                <span className="text-rose-500">*</span>
+-              </label>
++            <p className="text-sm text-slate-500 mt-2 mb-6">We’ll email you a verification code to sign in.</p>
++            {error && <p role="alert" className="mb-4 p-3 rounded-xl bg-rose-50 text-rose-700 text-sm">{error}</p>}
++            <form onSubmit={sendCode} className="space-y-4">
++              <label htmlFor="login-email" className="block text-sm font-semibold text-slate-700">Email address</label>
+               <div className="relative">
+                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+-                <input
+-                  type="email"
+-                  name="email"
+-                  value={formData.email}
+-                  onChange={handleChange}
+-                  onBlur={() => handleBlur('email')}
+-                  placeholder={
+-                    formData.role === ROLES.ALUMNI
+-                      ? 'name@company.com or personal@gmail.com'
+-                      : `${formData.role.toLowerCase()}@campus.edu`
+-                  }
+-                  className={`w-full text-sm pl-10 pr-4 py-2.5 bg-slate-50 border rounded-xl outline-none transition ${
+-                    errors.email && touched.email
+-                      ? 'border-rose-300 bg-rose-50/40 focus:border-rose-500 focus:ring-2 focus:ring-rose-100'
+-                      : 'border-slate-200 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
+-                  }`}
+-                />
+-              </div>
+-              {errors.email && touched.email && (
+-                <p className="text-[11px] text-rose-600 mt-1 flex items-center gap-1">
+-                  <AlertCircle className="w-3 h-3" /> {errors.email}
+-                </p>
+-              )}
+-            </div>
+-
+-            {/* Password */}
+-            <div>
+-              <div className="flex items-center justify-between mb-1.5">
+-                <label className="block text-xs font-medium text-slate-700">
+-                  Password <span className="text-rose-500">*</span>
+-                </label>
+-                <button
+-                  type="button"
+-                  onClick={() => setShowForgotModal(true)}
+-                  className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+-                >
+-                  Forgot?
+-                </button>
+-              </div>
+-              <div className="relative">
+-                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+-                <input
+-                  type={showPassword ? 'text' : 'password'}
+-                  name="password"
+-                  value={formData.password}
+-                  onChange={handleChange}
+-                  onBlur={() => handleBlur('password')}
+-                  placeholder="••••••••"
+-                  className={`w-full text-sm pl-10 pr-10 py-2.5 bg-slate-50 border rounded-xl outline-none transition ${
+-                    errors.password && touched.password
+-                      ? 'border-rose-300 bg-rose-50/40 focus:border-rose-500 focus:ring-2 focus:ring-rose-100'
+-                      : 'border-slate-200 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
+-                  }`}
+-                />
+-                <button
+-                  type="button"
+-                  onClick={() => setShowPassword(!showPassword)}
+-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+-                >
+-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+-                </button>
++                <input id="login-email" name="email" type="email" required autoComplete="email" value={email}
++                  onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" disabled={loading}
++                  className="w-full text-base pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
+               </div>
+-              {errors.password && touched.password && (
+-                <p className="text-[11px] text-rose-600 mt-1 flex items-center gap-1">
+-                  <AlertCircle className="w-3 h-3" /> {errors.password}
+-                </p>
+-              )}
+-            </div>
+-
+-            {/* Remember Me */}
+-            <div className="flex items-center justify-between text-xs pt-1">
+-              <label className="flex items-center gap-2 text-slate-600 cursor-pointer select-none">
+-                <input
+-                  type="checkbox"
+-                  name="rememberMe"
+-                  checked={formData.rememberMe}
+-                  onChange={handleChange}
+-                  className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+-                />
+-                <span>Remember campus device</span>
+-              </label>
+-            </div>
+-
+-            <Button
+-              type="submit"
+-              loading={loading}
+-              className="w-full py-3 text-sm font-semibold mt-2 shadow-md shadow-indigo-600/20"
+-            >
+-              Sign In to KnowPass <ArrowRight className="w-4 h-4 ml-1" />
+-            </Button>
+-          </form>
+-
+-          {/* Quick Demo One-Click Access */}
+-          <div className="mt-6 pt-5 border-t border-slate-100">
+-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-center mb-3">
+-              One-Click Role Demo Login
+-            </p>
+-            <div className="grid grid-cols-2 gap-2">
+-              <button
+-                type="button"
+-                onClick={() => handleQuickDemoLogin(ROLES.STUDENT)}
+-                className="px-2 py-2 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl font-semibold transition flex items-center justify-center gap-1.5"
+-              >
+-                <span>🎓 Junior Student</span>
+-              </button>
+-              <button
+-                type="button"
+-                onClick={() => handleQuickDemoLogin(ROLES.ALUMNI)}
+-                className="px-2 py-2 text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl font-semibold transition flex items-center justify-center gap-1.5"
+-              >
+-                <span>💼 Passed-Out Alumni</span>
+-              </button>
+-              <button
+-                type="button"
+-                onClick={() => handleQuickDemoLogin(ROLES.FACULTY)}
+-                className="px-2 py-2 text-xs bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-xl font-semibold transition flex items-center justify-center gap-1.5"
+-              >
+-                <span>🏛️ Faculty</span>
+-              </button>
+-              <button
+-                type="button"
+-                onClick={() => handleQuickDemoLogin(ROLES.ADMIN)}
+-                className="px-2 py-2 text-xs bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-xl font-semibold transition flex items-center justify-center gap-1.5"
+-              >
+-                <span>🛡️ Admin</span>
+-              </button>
+-            </div>
+-          </div>
+-
+-          <div className="mt-6 text-center">
+-            <p className="text-xs text-slate-500">
+-              Need a campus account?{' '}
+-              <Link to={ROUTES.REGISTER} className="font-semibold text-indigo-600 hover:underline">
+-                Register here
+-              </Link>
+-            </p>
+-          </div>
++              <Button type="submit" loading={loading} className="w-full">Send verification code <ArrowRight className="w-4 h-4" /></Button>
++            </form>
++            {demoEnabled && <div className="mt-6 pt-5 border-t border-slate-100">
++              <p className="text-sm text-slate-500 mb-3">Local development demos</p>
++              <div className="grid grid-cols-2 gap-2">{Object.keys(DEMO_USERS).map((role) => <Button key={role} variant="secondary" disabled={loading} onClick={() => quickDemo(role)}>{role}</Button>)}</div>
++            </div>}
++            <p className="text-sm text-slate-500 mt-6 text-center">Need an account? <Link to={ROUTES.REGISTER} className="text-indigo-600 font-semibold hover:underline">Register here</Link></p>
++          </>}
+         </div>
+       </div>
+-
+-      {/* Forgot Password Modal */}
+-      {showForgotModal && (
+-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
+-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
+-            <div className="flex items-center justify-between mb-3">
+-              <h3 className="text-base font-bold text-slate-900">Reset Campus Password</h3>
+-              <button
+-                onClick={() => setShowForgotModal(false)}
+-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+-              >
+-                <X className="w-4 h-4" />
+-              </button>
+-            </div>
+-            <p className="text-xs text-slate-500 mb-4">
+-              Enter your registered university email to receive a password reset link.
+-            </p>
+-
+-            {forgotSent ? (
+-              <div className="p-3 bg-emerald-50 text-emerald-800 text-xs rounded-xl flex items-center gap-2 border border-emerald-200">
+-                <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+-                <span>Password reset link sent to your campus inbox!</span>
+-              </div>
+-            ) : (
+-              <form onSubmit={handleSendReset} className="space-y-3">
+-                <input
+-                  type="email"
+-                  required
+-                  value={forgotEmail}
+-                  onChange={(e) => setForgotEmail(e.target.value)}
+-                  placeholder="your.name@campus.edu"
+-                  className="w-full text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 outline-none"
+-                />
+-                <Button type="submit" size="sm" className="w-full text-xs">
+-                  Send Reset Link
+-                </Button>
+-              </form>
+-            )}
+-          </div>
+-        </div>
+-      )}
+     </div>
+   );
+ }
+diff --git a/src/pages/Register.jsx b/src/pages/Register.jsx
+index ad32384..346647c 100644
+--- a/src/pages/Register.jsx
++++ b/src/pages/Register.jsx
+@@ -7,12 +7,9 @@ import {
+   GraduationCap,
+   User,
+   Mail,
+-  Lock,
+   Building,
+   Calendar,
+   FileText,
+-  Eye,
+-  EyeOff,
+   ArrowRight,
+   CheckCircle2,
+   AlertCircle,
+@@ -25,6 +22,7 @@ import {
+   BadgeCheck
+ } from 'lucide-react';
+ import { Button } from '../components/common/Button';
++import { EmailVerification } from '../components/common/EmailVerification';
+ import { OnboardingModal } from '../components/common/OnboardingModal';
+ import { GlobalDnsCloudModal } from '../components/common/GlobalDnsCloudModal';
+ import { InteractiveDotBackground } from '../components/ui/interactive-dot-background';
+@@ -50,13 +48,12 @@ const YEARS_OF_STUDY = [
+ ];
+ 
+ export function Register() {
+-  const { register, updateUser } = useAuth();
++  const { register, verifyEmail, updateUser } = useAuth();
+   const navigate = useNavigate();
+ 
+   const [formData, setFormData] = useState({
+     name: '',
+     email: '',
+-    password: '',
+     role: ROLES.STUDENT,
+     department: 'Computer Science & Engineering (CSE)',
+     yearOfStudy: '1st Year (Freshman)',
+@@ -75,7 +72,7 @@ export function Register() {
+   const [kycVerified, setKycVerified] = useState(true);
+   const [showDnsModal, setShowDnsModal] = useState(false);
+ 
+-  const [showPassword, setShowPassword] = useState(false);
++  const [pending, setPending] = useState(null);
+   const [errors, setErrors] = useState({});
+   const [touched, setTouched] = useState({});
+   const [loading, setLoading] = useState(false);
+@@ -114,9 +111,7 @@ export function Register() {
+       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+       if (!value.trim()) error = 'Campus email is required';
+       else if (!emailRegex.test(value.trim())) error = 'Please enter a valid email address (e.g. name@campus.edu)';
+-    } else if (name === 'password') {
+-      if (!value) error = 'Password is required';
+-      else if (value.length < 6) error = 'Password must be at least 6 characters';
++
+     } else if (name === 'department') {
+       if (!value) error = 'Please select a department';
+     } else if (name === 'rollNumber' && formData.role === ROLES.STUDENT) {
+@@ -150,7 +145,6 @@ export function Register() {
+     setTouched({
+       name: true,
+       email: true,
+-      password: true,
+       department: true,
+       rollNumber: true,
+     });
+@@ -167,7 +161,6 @@ export function Register() {
+       const payload = {
+         name: formData.name.trim(),
+         email: formData.email.trim(),
+-        password: formData.password,
+         role: formData.role,
+         department: formData.department,
+         yearOfStudy: formData.role === ROLES.STUDENT ? formData.yearOfStudy : null,
+@@ -185,8 +178,7 @@ export function Register() {
+       };
+ 
+       const result = await register(payload);
+-      setRegisteredUser(result);
+-      setShowOnboarding(true);
++      setPending({ ...result, profile: payload });
+     } catch (err) {
+       setErrors((prev) => ({
+         ...prev,
+@@ -205,6 +197,20 @@ export function Register() {
+     navigate(ROUTES.DASHBOARD);
+   };
+ 
++  if (pending && !showOnboarding) {
++    return <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4 sm:p-6">
++      <div className="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 shadow-2xl">
++        <EmailVerification email={pending.email} onBack={() => setPending(null)}
++          onResend={() => register(pending.profile)}
++          onVerify={async (details) => {
++            const verified = await verifyEmail(details);
++            setRegisteredUser(verified);
++            setShowOnboarding(true);
++          }} />
++      </div>
++    </div>;
++  }
++
+   return (
+     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4 sm:p-6 lg:p-10 relative overflow-hidden">
+       <InteractiveDotBackground />
+@@ -283,8 +289,8 @@ export function Register() {
+               )}
+             </div>
+ 
+-            {/* 2. Email and Password (2-col grid) */}
+-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
++            {/* 2. Email address */}
++            <div>
+               <div>
+                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                   {formData.role === ROLES.ALUMNI ? 'Personal / Work Email (No College ID required)' : 'Campus Email / Student ID'}{' '}
+@@ -313,39 +319,6 @@ export function Register() {
+                 )}
+               </div>
+ 
+-              <div>
+-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+-                  Password <span className="text-rose-500">*</span>
+-                </label>
+-                <div className="relative">
+-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+-                  <input
+-                    type={showPassword ? 'text' : 'password'}
+-                    name="password"
+-                    value={formData.password}
+-                    onChange={handleChange}
+-                    onBlur={() => handleBlur('password')}
+-                    placeholder="Min. 6 characters"
+-                    className={`w-full text-sm pl-10 pr-10 py-2.5 bg-slate-50 border rounded-xl outline-none transition ${
+-                      errors.password && touched.password
+-                        ? 'border-rose-300 bg-rose-50/40 focus:border-rose-500 focus:ring-2 focus:ring-rose-100'
+-                        : 'border-slate-200 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
+-                    }`}
+-                  />
+-                  <button
+-                    type="button"
+-                    onClick={() => setShowPassword(!showPassword)}
+-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+-                  >
+-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+-                  </button>
+-                </div>
+-                {errors.password && touched.password && (
+-                  <p className="text-[11px] text-rose-600 mt-1 flex items-center gap-1">
+-                    <AlertCircle className="w-3 h-3" /> {errors.password}
+-                  </p>
+-                )}
+-              </div>
+             </div>
+ 
+             {/* 3. Role Dropdown / Selector */}
+@@ -697,7 +670,7 @@ export function Register() {
+               loading={loading}
+               className="w-full py-3 text-sm font-semibold mt-4 shadow-md shadow-indigo-600/20"
+             >
+-              Verify KYC & Create Account <ArrowRight className="w-4 h-4 ml-1.5" />
++              Send verification code <ArrowRight className="w-4 h-4 ml-1.5" />
+             </Button>
+           </form>
+ 
+diff --git a/src/services/api.js b/src/services/api.js
+index 844d3f1..a78a14c 100644
+--- a/src/services/api.js
++++ b/src/services/api.js
+@@ -1,4 +1,5 @@
+ import axios from 'axios';
++import { supabase } from '../lib/supabaseClient';
+ import { tokenStorage } from '../utils/tokenStorage';
+ 
+ const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+@@ -48,12 +49,17 @@ api.interceptors.response.use(
+ 
+       if (refreshToken) {
+         try {
+-          // Attempt to refresh the access token
+-          const refreshResponse = await axios.post(`${BASE_URL}/auth/refresh`, {
+-            refreshToken,
+-          });
+-
+-          const { accessToken, newRefreshToken } = refreshResponse.data;
++          let accessToken;
++          let newRefreshToken;
++          if (supabase) {
++            const { data, error: refreshError } = await supabase.auth.refreshSession();
++            if (refreshError || !data.session) throw refreshError || new Error('Session expired.');
++            accessToken = data.session.access_token;
++            newRefreshToken = data.session.refresh_token;
++          } else {
++            const response = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken });
++            ({ accessToken, newRefreshToken } = response.data);
++          }
+           tokenStorage.setAccessToken(accessToken);
+           if (newRefreshToken) {
+             tokenStorage.setRefreshToken(newRefreshToken);
+diff --git a/src/services/authService.js b/src/services/authService.js
+index 9f86dd5..e28da37 100644
+--- a/src/services/authService.js
++++ b/src/services/authService.js
+@@ -1,6 +1,7 @@
+-import api from './api';
+ import { tokenStorage } from '../utils/tokenStorage';
+ import { ROLES } from '../constants/roles';
++import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
++import { createEmailAuth } from './emailAuth';
+ 
+ // Demo fallback mock users for instant testing without a backend server
+ export const DEMO_USERS = {
+@@ -68,221 +69,80 @@ export const DEMO_USERS = {
+   },
+ };
+ 
+-import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+-
+-export const authService = {
+-  /**
+-   * Real Supabase / API Login with Strict Credential Validation
+-   */
+-  login: async (credentials) => {
+-    // 1. If it's an explicit 1-click Quick Demo login request
+-    if (credentials.isQuickDemo) {
+-      const role = credentials.role || ROLES.STUDENT;
+-      const demoUser = DEMO_USERS[role];
+-      const mockAccessToken = `mock_jwt_access_token_${role.toLowerCase()}_${Date.now()}`;
+-      tokenStorage.setAccessToken(mockAccessToken);
+-      tokenStorage.setUser(demoUser);
+-      console.log('[Auth] Logged in with Demo Role:', role);
+-      return { user: demoUser, accessToken: mockAccessToken };
+-    }
+-
+-    // 2. Live Supabase Authentication
+-    if (isSupabaseConfigured && supabase && credentials.password) {
+-      const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
+-        email: credentials.email.trim(),
+-        password: credentials.password,
+-      });
+-
+-      if (authErr) {
+-        throw new Error(authErr.message || 'User not registered or invalid password. Please register an account first.');
+-      }
+ 
+-      if (authData?.user) {
+-        // 1. Check PostgreSQL profiles table
+-        const { data: profile } = await supabase
+-          .from('profiles')
+-          .select('*')
+-          .eq('email', credentials.email.trim())
+-          .single();
++// Demo access is isolated to local development without a configured database.
++export const demoEnabled = import.meta.env.DEV && !isSupabaseConfigured;
++const emailAuth = createEmailAuth(supabase);
++
++async function acceptSession(session) {
++  if (!supabase || !session?.access_token) return null;
++  const { data, error } = await supabase.auth.getUser();
++  if (error || !data?.user?.email_confirmed_at) throw new Error('Please verify your email to sign in.');
++  const account = data.user;
++  const { data: profile, error: profileError } = await supabase.rpc('ensure_own_profile');
++  if (profileError || !profile) throw new Error('Your email is verified, but your profile could not be loaded. Please try signing in again or contact the site administrator.');
++  const metadata = account.user_metadata || {};
++  const user = {
++    id: profile.id,
++    authId: account.id,
++    name: profile.name,
++    email: account.email,
++    emailVerified: true,
++    role: profile.role,
++    department: profile.department,
++    yearOfStudy: profile.year_of_study,
++    graduationYear: profile.graduation_year || metadata.graduation_year,
++    currentCompany: profile.current_company || metadata.current_company,
++    bio: profile.bio || '',
++    knowPoints: profile.know_points ?? 50,
++    badges: profile.badges || ['Pioneer'],
++    avatar: profile.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
++    joinedDate: profile.created_at || account.created_at,
++    rollNumber: profile.roll_number || metadata.roll_number,
++    workEmail: profile.work_email || metadata.work_email,
++    linkedinUrl: profile.linkedin_url || metadata.linkedin_url,
++    kycId: profile.kyc_id || metadata.kyc_id,
++    kycStatus: profile.kyc_status || metadata.kyc_status,
++    kycLevel: profile.kyc_level || metadata.kyc_level,
++    kycDocumentName: profile.kyc_document_name || metadata.kyc_document_name,
++  };
++  tokenStorage.setAccessToken(session.access_token);
++  tokenStorage.setRefreshToken(session.refresh_token);
++  tokenStorage.setUser(user);
++  return user;
++}
+ 
+-        // 2. Check Supabase Auth user metadata
+-        const metadata = authData.user.user_metadata || {};
+-        const userName = profile?.name || metadata.name || credentials.email.split('@')[0];
+-        const userRole = profile?.role || metadata.role || ROLES.STUDENT;
+-        const userDept = profile?.department || metadata.department || 'Computer Science & Engineering (CSE)';
+-        const userYear = profile?.year_of_study || metadata.year_of_study || '4th Year (Senior)';
+-
+-        const loggedInUser = {
+-          id: authData.user.id,
+-          name: userName,
+-          email: credentials.email.trim(),
+-          role: userRole,
+-          department: userDept,
+-          yearOfStudy: userYear,
+-          bio: profile?.bio || metadata.bio || '',
+-          knowPoints: profile?.know_points || 50,
+-          badges: profile?.badges || ['Pioneer'],
+-          avatar: profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+-          joinedDate: profile?.created_at || authData.user.created_at || new Date().toISOString(),
+-        };
+-
+-        const token = authData.session?.access_token || `supabase_token_${Date.now()}`;
+-        tokenStorage.setAccessToken(token);
+-        tokenStorage.setUser(loggedInUser);
+-        console.log('[Supabase Auth] Logged in with verified name:', userName);
+-        return { user: loggedInUser, accessToken: token };
+-      }
++export const authService = {
++  async login(credentials) {
++    if (credentials.isQuickDemo && demoEnabled) {
++      const user = { ...DEMO_USERS[credentials.role || ROLES.STUDENT], isDemo: true };
++      tokenStorage.setUser(user);
++      tokenStorage.setAccessToken('local_development_demo');
++      return { user };
+     }
+-
+-    throw new Error('User not registered or invalid password. Please check your credentials or click "Register an Account".');
++    return emailAuth.requestCode({ email: credentials.email });
+   },
+-
+-  /**
+-   * User Registration with Supabase Profile creation & user_metadata
+-   */
+-  register: async (userData) => {
+-    const kycId = userData.kycId || `KYC-CAMPUS-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+-    const kycStatus = userData.kycStatus || 'VERIFIED';
+-    const kycLevel = userData.kycLevel || 'TIER-2 (Identity & Credential Verified)';
+-
+-    if (isSupabaseConfigured && supabase && userData.password) {
+-      try {
+-        const { data: authData, error: authErr } = await supabase.auth.signUp({
+-          email: userData.email.trim(),
+-          password: userData.password,
+-          options: {
+-            data: {
+-              name: userData.name.trim(),
+-              role: userData.role || ROLES.STUDENT,
+-              department: userData.department || 'Computer Science & Engineering (CSE)',
+-              year_of_study: userData.yearOfStudy || '1st Year (Freshman)',
+-              bio: userData.bio || '',
+-              kyc_id: kycId,
+-              kyc_status: kycStatus,
+-            }
+-          }
+-        });
+-
+-        if (!authErr && authData?.user) {
+-          const profilePayload = {
+-            id: authData.user.id,
+-            name: userData.name.trim(),
+-            email: userData.email.trim(),
+-            role: userData.role || ROLES.STUDENT,
+-            department: userData.department || 'Computer Science & Engineering (CSE)',
+-            year_of_study: userData.yearOfStudy || '1st Year (Freshman)',
+-            graduation_year: userData.graduationYear || null,
+-            current_company: userData.currentCompany || null,
+-            bio: userData.bio || '',
+-            know_points: 50, // +50 KnowPoints reward for full KYC registration!
+-            badges: ['Pioneer', 'KYC Verified'],
+-            avatar_url: userData.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+-            kyc_id: kycId,
+-            kyc_status: kycStatus,
+-            kyc_level: kycLevel,
+-            roll_number: userData.rollNumber || null,
+-            work_email: userData.workEmail || null,
+-          };
+-
+-          try {
+-            await supabase.from('profiles').upsert(profilePayload, { onConflict: 'email' });
+-          } catch (dbErr) {
+-            console.warn('[Supabase Profile Insert Error]', dbErr.message);
+-          }
+-
+-          const registeredUser = {
+-            id: authData.user.id,
+-            name: profilePayload.name,
+-            email: profilePayload.email,
+-            role: profilePayload.role,
+-            department: profilePayload.department,
+-            yearOfStudy: profilePayload.year_of_study,
+-            graduationYear: profilePayload.graduation_year,
+-            currentCompany: profilePayload.current_company,
+-            bio: profilePayload.bio,
+-            knowPoints: profilePayload.know_points,
+-            badges: profilePayload.badges,
+-            avatar: profilePayload.avatar_url,
+-            kycId: kycId,
+-            kycStatus: kycStatus,
+-            kycLevel: kycLevel,
+-            rollNumber: userData.rollNumber || '2024-CAMPUS-REG',
+-            workEmail: userData.workEmail || null,
+-            kycDocumentName: userData.kycDocumentName || 'Verified_Institutional_Credential.pdf',
+-            joinedDate: new Date().toISOString(),
+-          };
+-
+-          const token = authData.session?.access_token || `supabase_token_${Date.now()}`;
+-          tokenStorage.setAccessToken(token);
+-          tokenStorage.setUser(registeredUser);
+-          return { user: registeredUser, accessToken: token };
+-        }
+-      } catch (e) {
+-        console.warn('[Supabase Auth Fallback]', e.message);
+-      }
+-    }
+-
+-    // High-reliability offline / standard registration fallback with complete KYC verification state
+-    const registeredUser = {
+-      id: `usr_${Date.now()}`,
+-      name: userData.name.trim(),
+-      email: userData.email.trim(),
+-      role: userData.role || ROLES.STUDENT,
+-      department: userData.department || 'Computer Science & Engineering (CSE)',
+-      yearOfStudy: userData.yearOfStudy || '1st Year (Freshman)',
+-      graduationYear: userData.graduationYear || null,
+-      currentCompany: userData.currentCompany || null,
+-      bio: userData.bio ? userData.bio.trim() : 'Active Campus Researcher & Peer Contributor.',
+-      knowPoints: 50, // +50 points welcome KYC reward!
+-      badges: ['Pioneer', 'KYC Verified'],
+-      avatar: userData.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+-      kycId: kycId,
+-      kycStatus: kycStatus,
+-      kycLevel: kycLevel,
+-      rollNumber: userData.rollNumber || '2024-CAMPUS-VERIFIED',
+-      workEmail: userData.workEmail || null,
+-      kycDocumentName: userData.kycDocumentName || 'Verified_Campus_Credential.pdf',
+-      joinedDate: new Date().toISOString(),
+-    };
+-
+-    const token = `knowpass_jwt_${registeredUser.role.toLowerCase()}_${Date.now()}`;
+-    tokenStorage.setAccessToken(token);
+-    tokenStorage.setUser(registeredUser);
+-
+-    try {
+-      const storedUsers = JSON.parse(localStorage.getItem('knowpass_registered_users') || '[]');
+-      storedUsers.push(registeredUser);
+-      localStorage.setItem('knowpass_registered_users', JSON.stringify(storedUsers));
+-    } catch {
+-      // ignore
++  register: (profile) => emailAuth.requestCode({ email: profile.email, profile }),
++  async verifyEmail(details) {
++    const session = await emailAuth.verifyCode(details);
++    try { return await acceptSession(session); }
++    catch (error) {
++      await supabase.auth.signOut({ scope: 'local' });
++      tokenStorage.clearAuth();
++      throw error;
+     }
+-
+-    return { user: registeredUser, accessToken: token };
+   },
+-
+-  /**
+-   * Fetch current user profile
+-   */
+-  getCurrentUser: async () => {
+-    try {
+-      const response = await api.get('/auth/me');
+-      tokenStorage.setUser(response.data.user);
+-      return response.data.user;
+-    } catch {
+-      return tokenStorage.getUser();
+-    }
++  async getCurrentUser() {
++    const cached = tokenStorage.getUser();
++    if (demoEnabled && cached?.isDemo) return cached;
++    if (!supabase) { tokenStorage.clearAuth(); return null; }
++    const { data, error } = await supabase.auth.getSession();
++    if (error) throw error;
++    if (!data.session) { tokenStorage.clearAuth(); return null; }
++    return acceptSession(data.session);
+   },
+-
+-  /**
+-   * Logout user
+-   */
+-  logout: async () => {
+-    try {
+-      await api.post('/auth/logout');
+-    } catch {
+-      // ignore network errors on logout
+-    } finally {
+-      tokenStorage.clearAuth();
+-    }
++  async logout() {
++    try { if (supabase) await supabase.auth.signOut({ scope: 'local' }); }
++    finally { tokenStorage.clearAuth(); }
+   },
+ };
+diff --git a/src/services/comments.js b/src/services/comments.js
+new file mode 100644
+index 0000000..0dd875e
+--- /dev/null
++++ b/src/services/comments.js
+@@ -0,0 +1,52 @@
++const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
++export const canManageComment = (comment, authUserId) => Boolean(authUserId && comment.authUserId === authUserId);
++export const mapComment = (row) => ({
++  id: row.id, authUserId: row.auth_user_id, user: row.user_name, role: row.user_role,
++  text: row.text, time: new Date(row.created_at).toLocaleString(),
++  edited: Boolean(row.updated_at && row.updated_at !== row.created_at),
++});
++const validText = (text) => {
++  const value = String(text || '').trim();
++  if (!value || value.length > 2000) throw new Error('Comments must contain 1–2,000 characters.');
++  return value;
++};
++
++export function createComments(client) {
++  const actor = async (entryId) => {
++    if (!client) throw new Error('Comments are unavailable. Please try again later.');
++    if (!uuid.test(entryId)) throw new Error('Comments are available on published posts.');
++    const { data, error } = await client.auth.getUser();
++    if (error || !data?.user?.email_confirmed_at) throw new Error('Verify your email and sign in to manage comments.');
++    return data.user.id;
++  };
++  return {
++    async get(entryId) {
++      if (!client || !uuid.test(entryId)) return [];
++      const { data, error } = await client.from('entry_comments').select('*').eq('entry_id', entryId).order('created_at', { ascending: true });
++      if (error) throw error;
++      return (data || []).map(mapComment);
++    },
++    async add(entryId, { text }) {
++      const value = validText(text);
++      await actor(entryId);
++      // The database supplies the authenticated author's identity and display details.
++      const { data, error } = await client.from('entry_comments').insert({ entry_id: entryId, text: value }).select().single();
++      if (error) throw new Error('Your comment could not be posted. Please try again.');
++      return mapComment(data);
++    },
++    async edit(entryId, commentId, text) {
++      const value = validText(text);
++      const ownerId = await actor(entryId);
++      const { data, error } = await client.from('entry_comments').update({ text: value })
++        .eq('id', commentId).eq('entry_id', entryId).eq('auth_user_id', ownerId).select().single();
++      if (error || !data) throw new Error('Could not edit this comment. You can only edit your own comments; please try again.');
++      return mapComment(data);
++    },
++    async remove(entryId, commentId) {
++      const ownerId = await actor(entryId);
++      const { data, error } = await client.from('entry_comments').delete()
++        .eq('id', commentId).eq('entry_id', entryId).eq('auth_user_id', ownerId).select('id');
++      if (error || !data?.length) throw new Error('Could not delete this comment. You can only delete your own comments; please try again.');
++    },
++  };
++}
+diff --git a/src/services/emailAuth.js b/src/services/emailAuth.js
+new file mode 100644
+index 0000000..c22d999
+--- /dev/null
++++ b/src/services/emailAuth.js
+@@ -0,0 +1,51 @@
++const normalizeEmail = (email) => {
++  const value = String(email || '').trim().toLowerCase();
++  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) throw new Error('Enter a valid email address.');
++  return value;
++};
++
++export function createEmailAuth(client) {
++  const requireClient = () => {
++    if (!client) throw new Error('Email sign-in is unavailable. Please contact the site administrator.');
++  };
++  return {
++    async requestCode({ email, profile }) {
++      requireClient();
++      const address = normalizeEmail(email);
++      const options = { shouldCreateUser: Boolean(profile) };
++      if (profile) {
++        if (!profile.name?.trim()) throw new Error('Enter your full name.');
++        options.data = {
++          name: profile.name.trim(),
++          role: ['STUDENT', 'ALUMNI', 'FACULTY'].includes(profile.role) ? profile.role : 'STUDENT',
++          department: profile.department,
++          year_of_study: profile.yearOfStudy,
++          graduation_year: profile.graduationYear,
++          current_company: profile.currentCompany,
++          bio: profile.bio,
++          roll_number: profile.rollNumber,
++          work_email: profile.workEmail,
++          linkedin_url: profile.linkedinUrl,
++          kyc_id: profile.kycId,
++          kyc_status: profile.kycStatus,
++          kyc_level: profile.kycLevel,
++          kyc_document_name: profile.kycDocumentName,
++        };
++      }
++      const { error } = await client.auth.signInWithOtp({ email: address, options });
++      if (error) throw error;
++      return { email: address, requiresVerification: true };
++    },
++    async verifyCode({ email, token }) {
++      requireClient();
++      const code = String(token || '').trim();
++      if (!/^\d{6,10}$/.test(code)) throw new Error('Enter the complete verification code from your email.');
++      const { data, error } = await client.auth.verifyOtp({ email: normalizeEmail(email), token: code, type: 'email' });
++      if (error) throw new Error('That code is invalid or has expired. Try again or request a new code.');
++      if (!data?.session?.access_token || !data.session.user?.email_confirmed_at) {
++        throw new Error('Email verification did not complete. Please request a new code.');
++      }
++      return data.session;
++    },
++  };
++}
+diff --git a/src/services/knowledgeService.js b/src/services/knowledgeService.js
+index 6174a42..ccd742a 100644
+--- a/src/services/knowledgeService.js
++++ b/src/services/knowledgeService.js
+@@ -483,6 +483,8 @@ export const SAMPLE_KNOWLEDGE_ITEMS = [
+ ];
+ 
+ import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
++import { createComments } from './comments';
++const commentService = createComments(supabase);
+ 
+ // Local storage persistence helpers for guaranteed retention across sessions
+ const getLocalUpvotes = () => {
+@@ -504,25 +506,6 @@ const saveLocalUpvote = (id, count) => {
+   }
+ };
+ 
+-const getLocalComments = (entryId) => {
+-  try {
+-    const raw = localStorage.getItem(`knowpass_comments_${entryId}`);
+-    return raw ? JSON.parse(raw) : [];
+-  } catch {
+-    return [];
+-  }
+-};
+-
+-const saveLocalComment = (entryId, comment) => {
+-  try {
+-    const list = getLocalComments(entryId);
+-    list.push(comment);
+-    localStorage.setItem(`knowpass_comments_${entryId}`, JSON.stringify(list));
+-  } catch (e) {
+-    console.warn('Error caching comment:', e);
+-  }
+-};
+-
+ // Tag and resource parsing helpers ensuring zero crashes on malformed or stringified database entries
+ export const ensureArrayTags = (tags) => {
+   if (Array.isArray(tags)) return tags;
+@@ -614,7 +597,7 @@ export const knowledgeService = {
+               summary: d.summary || '',
+               content: d.content || '',
+               resources: parseResources(d.resources),
+-              comments: getLocalComments(d.id),
++              comments: [],
+             };
+           });
+ 
+@@ -626,7 +609,7 @@ export const knowledgeService = {
+                 tags: ensureArrayTags(lc.tags),
+                 resources: parseResources(lc.resources),
+                 upvotes: upvotesCache[lc.id] !== undefined ? Math.max(lc.upvotes || 0, upvotesCache[lc.id]) : (lc.upvotes || 0),
+-                comments: [...(lc.comments || []), ...getLocalComments(lc.id)],
++                comments: (lc.comments || []),
+               });
+             }
+           });
+@@ -659,7 +642,7 @@ export const knowledgeService = {
+         tags: ensureArrayTags(item.tags),
+         resources: parseResources(item.resources),
+         upvotes: upvotesCache[item.id] !== undefined ? Math.max(item.upvotes || 0, upvotesCache[item.id]) : (item.upvotes || 0),
+-        comments: [...(item.comments || []), ...getLocalComments(item.id)],
++        comments: (item.comments || []),
+       }));
+       
+       if (params.category && params.category !== 'All') {
+@@ -720,7 +703,7 @@ export const knowledgeService = {
+             summary: data.summary,
+             content: data.content,
+             resources: data.resources || { files: [] },
+-            comments: getLocalComments(data.id),
++            comments: [],
+           };
+         }
+       } catch (err) {
+@@ -736,7 +719,7 @@ export const knowledgeService = {
+       return {
+         ...base,
+         upvotes: upvotesCache[base.id] !== undefined ? Math.max(base.upvotes, upvotesCache[base.id]) : base.upvotes,
+-        comments: [...(base.comments || []), ...getLocalComments(base.id)],
++        comments: (base.comments || []),
+       };
+     }
+   },
+@@ -867,75 +850,10 @@ export const knowledgeService = {
+     return newUpvotes;
+   },
+ 
+-  getComments: async (entryId) => {
+-    const local = getLocalComments(entryId);
+-    if (isSupabaseConfigured && supabase) {
+-      try {
+-        const { data, error } = await supabase
+-          .from('entry_comments')
+-          .select('*')
+-          .eq('entry_id', entryId)
+-          .order('created_at', { ascending: true });
+-
+-        if (!error && data && data.length > 0) {
+-          const dbComments = data.map((c) => ({
+-            id: c.id,
+-            user: c.user_name,
+-            role: c.user_role,
+-            text: c.text,
+-            time: new Date(c.created_at).toLocaleDateString(),
+-          }));
+-          // Merge db + unique local comments
+-          const allComments = [...dbComments];
+-          local.forEach((lc) => {
+-            if (!allComments.some((dc) => dc.id === lc.id || (dc.text === lc.text && dc.user === lc.user))) {
+-              allComments.push(lc);
+-            }
+-          });
+-          return allComments;
+-        }
+-      } catch (err) {
+-        console.warn('[knowledgeService] Supabase getComments error:', err.message);
+-      }
+-    }
+-    return local;
+-  },
+-
+-  addComment: async (entryId, commentData) => {
+-    const newComment = {
+-      id: `c_${Date.now()}`,
+-      user: commentData.user || 'Campus Member',
+-      role: commentData.role || 'STUDENT',
+-      text: commentData.text,
+-      time: 'Just now',
+-    };
+-
+-    saveLocalComment(entryId, newComment);
+-
+-    if (isSupabaseConfigured && supabase) {
+-      try {
+-        const payload = {
+-          entry_id: entryId,
+-          user_name: commentData.user || 'Campus Member',
+-          user_role: commentData.role || 'STUDENT',
+-          text: commentData.text,
+-        };
+-        const { data, error } = await supabase
+-          .from('entry_comments')
+-          .insert([payload])
+-          .select()
+-          .single();
+-
+-        if (!error && data) {
+-          console.log('[Supabase] Comment saved permanently to PostgreSQL:', data.id);
+-        }
+-      } catch (err) {
+-        console.warn('[knowledgeService] Supabase addComment error:', err.message);
+-      }
+-    }
+-
+-    return newComment;
+-  },
++  getComments: (entryId) => commentService.get(entryId),
++  addComment: (entryId, data) => commentService.add(entryId, data),
++  editComment: (entryId, commentId, text) => commentService.edit(entryId, commentId, text),
++  deleteComment: (entryId, commentId) => commentService.remove(entryId, commentId),
+ 
+   update: async (id, updateData) => {
+     // 1. Update in-memory SAMPLE_KNOWLEDGE_ITEMS
+diff --git a/supabase/migrations/20260911_email_verification_comments.sql b/supabase/migrations/20260911_email_verification_comments.sql
+new file mode 100644
+index 0000000..8be3b6a
+--- /dev/null
++++ b/supabase/migrations/20260911_email_verification_comments.sql
+@@ -0,0 +1,156 @@
++-- Apply after schema.sql, before deploying the email-code/comment update.
++-- Existing accounts, profile IDs and comments are retained. Safe to run again.
++BEGIN;
++
++ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
++ALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check
++  CHECK (role IN ('STUDENT', 'ALUMNI', 'FACULTY', 'TECHNICIAN', 'ADMIN'));
++
++-- Resolve a profile only after Supabase has verified the account's email.
++CREATE OR REPLACE FUNCTION public.ensure_own_profile()
++RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
++DECLARE
++  account auth.users%ROWTYPE;
++  member public.profiles%ROWTYPE;
++  metadata jsonb;
++BEGIN
++  SELECT * INTO account FROM auth.users WHERE id = auth.uid();
++  IF account.id IS NULL OR account.email_confirmed_at IS NULL THEN
++    RAISE EXCEPTION 'Verify your email before continuing';
++  END IF;
++  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(account.id::text, 0));
++  metadata := COALESCE(account.raw_user_meta_data, '{}'::jsonb);
++  SELECT * INTO member FROM public.profiles p
++    WHERE p.auth_id = account.id OR (p.auth_id IS NULL AND
++      (p.id = account.id OR lower(p.email) = lower(account.email)))
++    ORDER BY (p.auth_id = account.id) DESC NULLS LAST, p.created_at LIMIT 1;
++  IF member.id IS NULL THEN
++    INSERT INTO public.profiles (id, auth_id, email, name, role, department, year_of_study, bio, know_points, badges)
++    VALUES (account.id, account.id, account.email,
++      COALESCE(NULLIF(btrim(metadata->>'name'), ''), split_part(account.email, '@', 1)),
++      CASE WHEN metadata->>'role' IN ('STUDENT', 'ALUMNI', 'FACULTY') THEN metadata->>'role' ELSE 'STUDENT' END,
++      COALESCE(NULLIF(metadata->>'department', ''), 'General'), metadata->>'year_of_study',
++      COALESCE(metadata->>'bio', ''), 50,
++      CASE WHEN metadata->>'kyc_status' = 'VERIFIED' THEN ARRAY['Pioneer', 'KYC Verified'] ELSE ARRAY['Pioneer'] END)
++      RETURNING * INTO member;
++  ELSE
++    UPDATE public.profiles SET auth_id = account.id, email = account.email
++      WHERE id = member.id RETURNING * INTO member;
++  END IF;
++  RETURN to_jsonb(member);
++END;
++$$;
++REVOKE ALL ON FUNCTION public.ensure_own_profile() FROM PUBLIC;
++GRANT EXECUTE ON FUNCTION public.ensure_own_profile() TO authenticated;
++
++-- Keep the profile identity used by authentication and comment attribution trustworthy.
++-- Existing profile upserts can still change display details, including the avatar.
++CREATE OR REPLACE FUNCTION public.own_verified_email()
++RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
++  SELECT email FROM auth.users WHERE id = auth.uid() AND email_confirmed_at IS NOT NULL;
++$$;
++REVOKE ALL ON FUNCTION public.own_verified_email() FROM PUBLIC;
++GRANT EXECUTE ON FUNCTION public.own_verified_email() TO authenticated;
++
++-- Resolve the verified email without granting clients access to auth.users.
++CREATE OR REPLACE FUNCTION public.protect_profile_identity()
++RETURNS trigger LANGUAGE plpgsql SET search_path = '' AS $$
++DECLARE account_email text;
++BEGIN
++  IF current_user NOT IN ('anon', 'authenticated') THEN RETURN NEW; END IF;
++  IF TG_OP = 'UPDATE' THEN
++    IF NEW.id IS DISTINCT FROM OLD.id OR NEW.auth_id IS DISTINCT FROM OLD.auth_id
++      OR NEW.email IS DISTINCT FROM OLD.email OR NEW.role IS DISTINCT FROM OLD.role THEN
++      RAISE EXCEPTION 'Profile account identity and role cannot be changed here';
++    END IF;
++  ELSE
++    account_email := public.own_verified_email();
++    IF account_email IS NULL THEN RAISE EXCEPTION 'Verify your email first'; END IF;
++    IF NEW.auth_id IS NOT NULL AND NEW.auth_id <> auth.uid() THEN RAISE EXCEPTION 'Invalid profile owner'; END IF;
++    NEW.auth_id := auth.uid();
++    NEW.email := account_email;
++    IF NEW.role NOT IN ('STUDENT', 'ALUMNI', 'FACULTY') AND NOT EXISTS (
++      SELECT 1 FROM public.profiles WHERE auth_id = auth.uid() AND id = NEW.id AND role = NEW.role
++    ) THEN RAISE EXCEPTION 'This account role must be assigned by an administrator'; END IF;
++  END IF;
++  RETURN NEW;
++END;
++$$;
++DROP TRIGGER IF EXISTS protect_profile_identity ON public.profiles;
++CREATE TRIGGER protect_profile_identity BEFORE INSERT OR UPDATE ON public.profiles
++  FOR EACH ROW EXECUTE FUNCTION public.protect_profile_identity();
++DROP POLICY IF EXISTS "Allow public insert on profiles" ON public.profiles;
++DROP POLICY IF EXISTS "Allow public update on profiles" ON public.profiles;
++DROP POLICY IF EXISTS "Insert own profile" ON public.profiles;
++DROP POLICY IF EXISTS "Update own profile" ON public.profiles;
++CREATE POLICY "Insert own profile" ON public.profiles FOR INSERT TO authenticated
++  WITH CHECK (auth_id = (SELECT auth.uid()));
++CREATE POLICY "Update own profile" ON public.profiles FOR UPDATE TO authenticated
++  USING (auth_id = (SELECT auth.uid())) WITH CHECK (auth_id = (SELECT auth.uid()));
++
++ALTER TABLE public.entry_comments ADD COLUMN IF NOT EXISTS auth_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL;
++ALTER TABLE public.entry_comments ADD COLUMN IF NOT EXISTS updated_at timestamptz;
++DROP TRIGGER IF EXISTS stamp_comment_author ON public.entry_comments;
++UPDATE public.entry_comments SET updated_at = created_at WHERE updated_at IS NULL;
++ALTER TABLE public.entry_comments ALTER COLUMN updated_at SET DEFAULT now();
++ALTER TABLE public.entry_comments ALTER COLUMN updated_at SET NOT NULL;
++CREATE INDEX IF NOT EXISTS idx_comments_owner ON public.entry_comments(auth_user_id);
++CREATE INDEX IF NOT EXISTS idx_comments_entry_created ON public.entry_comments(entry_id, created_at);
++
++-- Only recover ownership from stored profile IDs, never from a matching display name.
++UPDATE public.entry_comments c SET auth_user_id = a.id
++FROM public.profiles p JOIN auth.users a ON a.id = COALESCE(p.auth_id, p.id)
++WHERE c.user_id = p.id AND c.auth_user_id IS NULL AND a.email_confirmed_at IS NOT NULL;
++
++CREATE OR REPLACE FUNCTION public.stamp_comment_author()
++RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
++DECLARE member public.profiles%ROWTYPE;
++BEGIN
++  IF TG_OP = 'INSERT' THEN
++    PERFORM public.ensure_own_profile();
++    SELECT * INTO member FROM public.profiles WHERE auth_id = auth.uid();
++    NEW.auth_user_id := auth.uid();
++    NEW.user_id := member.id;
++    NEW.user_name := member.name;
++    NEW.user_role := member.role;
++    NEW.created_at := now();
++    NEW.updated_at := NEW.created_at;
++  ELSE
++    IF NEW.id IS DISTINCT FROM OLD.id OR NEW.entry_id IS DISTINCT FROM OLD.entry_id
++      OR (NEW.auth_user_id IS DISTINCT FROM OLD.auth_user_id AND NOT
++        (NEW.auth_user_id IS NULL AND NOT EXISTS (SELECT 1 FROM auth.users WHERE id = OLD.auth_user_id)))
++      OR (NEW.user_id IS DISTINCT FROM OLD.user_id AND NOT
++        (NEW.user_id IS NULL AND NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = OLD.user_id)))
++      OR NEW.user_name IS DISTINCT FROM OLD.user_name OR NEW.user_role IS DISTINCT FROM OLD.user_role
++      OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
++      RAISE EXCEPTION 'Comment identity cannot be changed';
++    END IF;
++    NEW.updated_at := now();
++  END IF;
++  NEW.text := btrim(NEW.text);
++  IF NEW.text IS NULL OR char_length(NEW.text) NOT BETWEEN 1 AND 2000 THEN
++    RAISE EXCEPTION 'Comments must contain 1 to 2000 characters';
++  END IF;
++  RETURN NEW;
++END;
++$$;
++REVOKE ALL ON FUNCTION public.stamp_comment_author() FROM PUBLIC;
++CREATE TRIGGER stamp_comment_author BEFORE INSERT OR UPDATE ON public.entry_comments
++  FOR EACH ROW EXECUTE FUNCTION public.stamp_comment_author();
++
++ALTER TABLE public.entry_comments ENABLE ROW LEVEL SECURITY;
++DROP POLICY IF EXISTS "Allow public select on entry_comments" ON public.entry_comments;
++DROP POLICY IF EXISTS "Allow public insert on entry_comments" ON public.entry_comments;
++DROP POLICY IF EXISTS "Read comments" ON public.entry_comments;
++DROP POLICY IF EXISTS "Insert own comments" ON public.entry_comments;
++DROP POLICY IF EXISTS "Edit own comments" ON public.entry_comments;
++DROP POLICY IF EXISTS "Delete own comments" ON public.entry_comments;
++CREATE POLICY "Read comments" ON public.entry_comments FOR SELECT TO authenticated USING (true);
++CREATE POLICY "Insert own comments" ON public.entry_comments FOR INSERT TO authenticated
++  WITH CHECK (auth_user_id = (SELECT auth.uid()));
++CREATE POLICY "Edit own comments" ON public.entry_comments FOR UPDATE TO authenticated
++  USING (auth_user_id = (SELECT auth.uid())) WITH CHECK (auth_user_id = (SELECT auth.uid()));
++CREATE POLICY "Delete own comments" ON public.entry_comments FOR DELETE TO authenticated
++  USING (auth_user_id = (SELECT auth.uid()));
++
++COMMIT;
+diff --git a/supabase/templates/email-code.html b/supabase/templates/email-code.html
+new file mode 100644
+index 0000000..30dadb1
+--- /dev/null
++++ b/supabase/templates/email-code.html
+@@ -0,0 +1,13 @@
++<!doctype html>
++<html lang="en">
++  <body style="font-family:Arial,sans-serif;background:#f8fafc;color:#0f172a;padding:24px">
++    <div style="max-width:480px;margin:auto;background:white;border-radius:16px;padding:32px">
++      <h1 style="color:#4f46e5;font-size:24px">KnowPass</h1>
++      <h2 style="font-size:20px">Your email verification code</h2>
++      <p>Enter this code on KnowPass to continue:</p>
++      <p style="font-size:32px;font-weight:bold;letter-spacing:6px">{{ .Token }}</p>
++      <p>This code can be used once. If it expires, request a new code on the website.</p>
++      <p>If you didn’t request this email, you can ignore it. Do not share this code.</p>
++    </div>
++  </body>
++</html>
+diff --git a/tests/.gitignore b/tests/.gitignore
+new file mode 100644
+index 0000000..1c36b2f
+--- /dev/null
++++ b/tests/.gitignore
+@@ -0,0 +1 @@
++.screens-*/
+diff --git a/tests/database-permissions.test.mjs b/tests/database-permissions.test.mjs
+new file mode 100644
+index 0000000..bfd47cd
+--- /dev/null
++++ b/tests/database-permissions.test.mjs
+@@ -0,0 +1,104 @@
++import { test, before, after } from 'node:test';
++import assert from 'node:assert/strict';
++import { readFile } from 'node:fs/promises';
++import { PGlite } from '@electric-sql/pglite';
++
++const db = new PGlite();
++const owner = '11111111-1111-4111-8111-111111111111';
++const other = '22222222-2222-4222-8222-222222222222';
++const unverified = '33333333-3333-4333-8333-333333333333';
++const legacy = '44444444-4444-4444-8444-444444444444';
++const legacyProfile = '55555555-5555-4555-8555-555555555555';
++const entry = '66666666-6666-4666-8666-666666666666';
++
++async function asUser(id, operation, role = 'authenticated') {
++  await db.exec('BEGIN');
++  try {
++    await db.exec(`SET LOCAL ROLE ${role}`);
++    await db.query("SELECT set_config('request.jwt.claim.sub', $1, true)", [id || '']);
++    const result = await operation();
++    await db.exec('COMMIT');
++    return result;
++  } catch (error) { await db.exec('ROLLBACK'); throw error; }
++}
++const profile = (id) => asUser(id, () => db.query('SELECT public.ensure_own_profile() AS profile'));
++
++before(async () => {
++  await db.exec(`CREATE ROLE anon; CREATE ROLE authenticated;
++    CREATE SCHEMA auth;
++    CREATE TABLE auth.users (id uuid PRIMARY KEY, email text, email_confirmed_at timestamptz, raw_user_meta_data jsonb);
++    CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS
++      $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
++    GRANT USAGE ON SCHEMA public, auth TO anon, authenticated;`);
++  const schema = await readFile(new URL('../supabase/schema.sql', import.meta.url), 'utf8');
++  await db.exec(schema.replace(/^CREATE EXTENSION.*;$/gm, ''));
++  await db.exec('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated');
++  for (const [id, email, confirmed, role] of [[owner, 'owner@example.com', true, 'ALUMNI'], [other, 'other@example.com', true, 'ADMIN'], [unverified, 'pending@example.com', false, 'STUDENT'], [legacy, 'legacy@example.com', true, 'STUDENT']]) {
++    await db.query('INSERT INTO auth.users VALUES ($1, $2, $3, $4)', [id, email, confirmed ? '2026-09-11' : null, JSON.stringify({ name: 'Same Name', role })]);
++  }
++  await db.query("INSERT INTO public.profiles (id, name, email, role, department) VALUES ($1, 'Legacy Admin', 'legacy@example.com', 'ADMIN', 'IT')", [legacyProfile]);
++  const migration = await readFile(new URL('../supabase/migrations/20260911_email_verification_comments.sql', import.meta.url), 'utf8');
++  await db.exec(migration);
++  await db.exec(migration); // Reapplying must preserve data and not duplicate policies.
++  await profile(owner); await profile(other);
++  await db.query("INSERT INTO public.knowledge_entries (id, title, category, knowledge_type, department, author_name, author_role, summary, content) VALUES ($1, 'Post', 'Notes', 'Notes', 'IT', 'Author', 'STUDENT', 'Summary', 'Content')", [entry]);
++});
++after(() => db.close());
++
++test('profile creation requires a verified account and preserves existing identities', async () => {
++  await assert.rejects(profile(unverified), /Verify your email/);
++  await assert.rejects(asUser(null, () => db.query('SELECT public.ensure_own_profile()'), 'anon'), /permission denied/);
++  const existing = (await profile(legacy)).rows[0].profile;
++  assert.equal(existing.id, legacyProfile);
++  assert.equal(existing.auth_id, legacy);
++  assert.equal(existing.role, 'ADMIN');
++  await asUser(legacy, () => db.query("INSERT INTO public.profiles (id, email, name, role, department) VALUES ($1, 'legacy@example.com', 'Legacy Admin', 'ADMIN', 'IT') ON CONFLICT (email) DO UPDATE SET name = excluded.name, role = excluded.role", [legacyProfile]));
++  assert.equal((await profile(other)).rows[0].profile.role, 'STUDENT');
++  assert.equal((await profile(owner)).rows[0].profile.role, 'ALUMNI');
++});
++
++test('profile editing still works, but clients cannot reassign account identity or role', async () => {
++  await asUser(owner, () => db.query("INSERT INTO public.profiles (id, email, name, role, department) VALUES ($1, 'owner@example.com', 'Updated Name', 'ALUMNI', 'IT') ON CONFLICT (email) DO UPDATE SET name = excluded.name, role = excluded.role", [owner]));
++  assert.equal((await profile(owner)).rows[0].profile.name, 'Updated Name');
++  await assert.rejects(asUser(owner, () => db.query("UPDATE public.profiles SET role = 'ADMIN' WHERE id = $1", [owner])), /identity and role/);
++  await assert.rejects(asUser(owner, () => db.query('UPDATE public.profiles SET auth_id = $1 WHERE id = $2', [other, owner])), /identity and role/);
++  const result = await asUser(other, () => db.query("UPDATE public.profiles SET name = 'Impersonated' WHERE id = $1 RETURNING id", [owner]));
++  assert.equal(result.rows.length, 0);
++});
++
++test('comment identity is stamped by the database and only the owner can edit or delete', async () => {
++  const inserted = await asUser(owner, () => db.query('INSERT INTO public.entry_comments (entry_id, text, auth_user_id, user_name, user_role) VALUES ($1, $2, $3, $4, $5) RETURNING *', [entry, '  First comment  ', other, 'Forged author', 'ADMIN']));
++  const comment = inserted.rows[0];
++  assert.equal(comment.auth_user_id, owner);
++  assert.equal(comment.user_name, 'Updated Name');
++  assert.equal(comment.text, 'First comment');
++  await assert.rejects(asUser(owner, () => db.query('UPDATE public.entry_comments SET auth_user_id = $1 WHERE id = $2', [other, comment.id])), /identity/);
++  await assert.rejects(asUser(owner, () => db.query("UPDATE public.entry_comments SET text = ' ' WHERE id = $1", [comment.id])), /characters/);
++  const unauthorizedEdit = await asUser(other, () => db.query("UPDATE public.entry_comments SET text = 'Changed by other' WHERE id = $1 RETURNING id", [comment.id]));
++  const unauthorizedDelete = await asUser(other, () => db.query('DELETE FROM public.entry_comments WHERE id = $1 RETURNING id', [comment.id]));
++  assert.equal(unauthorizedEdit.rows.length, 0);
++  assert.equal(unauthorizedDelete.rows.length, 0);
++  await assert.rejects(asUser(null, () => db.query('INSERT INTO public.entry_comments (entry_id, text) VALUES ($1, $2)', [entry, 'Anonymous']), 'anon'));
++  const updated = await asUser(owner, () => db.query('UPDATE public.entry_comments SET text = $1 WHERE id = $2 RETURNING *', ['Edited comment', comment.id]));
++  assert.equal(updated.rows[0].text, 'Edited comment');
++  const reloaded = await asUser(other, () => db.query('SELECT text FROM public.entry_comments WHERE id = $1', [comment.id]));
++  assert.equal(reloaded.rows[0].text, 'Edited comment');
++  await asUser(owner, () => db.query('DELETE FROM public.entry_comments WHERE id = $1', [comment.id]));
++  assert.equal((await db.query('SELECT id FROM public.entry_comments WHERE id = $1', [comment.id])).rows.length, 0);
++});
++
++test('legacy comments without an account ID cannot be claimed using a display name', async () => {
++  await db.exec('ALTER TABLE public.entry_comments DISABLE TRIGGER stamp_comment_author');
++  const { rows } = await db.query("INSERT INTO public.entry_comments (entry_id, user_name, user_role, text) VALUES ($1, 'Same Name', 'STUDENT', 'Legacy comment') RETURNING id", [entry]);
++  await db.exec('ALTER TABLE public.entry_comments ENABLE TRIGGER stamp_comment_author');
++  const result = await asUser(other, () => db.query('DELETE FROM public.entry_comments WHERE id = $1 RETURNING id', [rows[0].id]));
++  assert.equal(result.rows.length, 0);
++});
++
++test('account removal preserves the comment without leaving transferable ownership', async () => {
++  const { rows } = await asUser(other, () => db.query('INSERT INTO public.entry_comments (entry_id, text) VALUES ($1, $2) RETURNING id', [entry, 'Retained after account removal']));
++  await db.query('DELETE FROM auth.users WHERE id = $1', [other]);
++  const saved = (await db.query('SELECT auth_user_id, text FROM public.entry_comments WHERE id = $1', [rows[0].id])).rows[0];
++  assert.equal(saved.auth_user_id, null);
++  assert.equal(saved.text, 'Retained after account removal');
++});
+diff --git a/tests/email-auth.test.mjs b/tests/email-auth.test.mjs
+new file mode 100644
+index 0000000..c6bb560
+--- /dev/null
++++ b/tests/email-auth.test.mjs
+@@ -0,0 +1,46 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createEmailAuth } from '../src/services/emailAuth.js';
++
++test('requesting a sign-in code never creates an account or grants a session', async () => {
++  let sent;
++  const auth = createEmailAuth({ auth: { signInWithOtp: async (args) => { sent = args; return { error: null }; } } });
++  const result = await auth.requestCode({ email: ' Member@Example.com ' });
++  assert.equal(sent.email, 'member@example.com');
++  assert.equal(sent.options.shouldCreateUser, false);
++  assert.deepEqual(result, { email: 'member@example.com', requiresVerification: true });
++});
++
++test('registration sends profile metadata but cannot self-assign an administrator role', async () => {
++  let sent;
++  const auth = createEmailAuth({ auth: { signInWithOtp: async (args) => { sent = args; return { error: null }; } } });
++  const result = await auth.requestCode({ email: 'new@example.com', profile: { name: ' New Member ', role: 'ADMIN', rollNumber: '2026-1' } });
++  assert.equal(sent.options.shouldCreateUser, true);
++  assert.equal(sent.options.data.role, 'STUDENT');
++  assert.equal(sent.options.data.roll_number, '2026-1');
++  assert.equal(result.user, undefined);
++  assert.equal(result.session, undefined);
++});
++
++test('delivery failures and unconfigured authentication remain errors', async () => {
++  await assert.rejects(createEmailAuth(null).requestCode({ email: 'new@example.com' }), /unavailable/);
++  const auth = createEmailAuth({ auth: { signInWithOtp: async () => ({ error: new Error('Rate limit reached') }) } });
++  await assert.rejects(auth.requestCode({ email: 'new@example.com' }), /Rate limit/);
++});
++
++test('incomplete, expired and unverified codes cannot sign a user in', async () => {
++  const auth = createEmailAuth({ auth: { verifyOtp: async () => ({ error: new Error('expired') }) } });
++  await assert.rejects(auth.verifyCode({ email: 'new@example.com', token: '123' }), /complete/);
++  await assert.rejects(auth.verifyCode({ email: 'new@example.com', token: '123456' }), /expired/);
++  const unverified = createEmailAuth({ auth: { verifyOtp: async () => ({ data: { session: { access_token: 'token', user: {} } } }) } });
++  await assert.rejects(unverified.verifyCode({ email: 'new@example.com', token: '123456' }), /did not complete/);
++});
++
++test('only a Supabase-verified email session is returned', async () => {
++  const session = { access_token: 'verified-token', user: { id: 'owner', email_confirmed_at: '2026-09-11' } };
++  const auth = createEmailAuth({ auth: { verifyOtp: async (args) => {
++    assert.deepEqual(args, { email: 'new@example.com', token: '123456', type: 'email' });
++    return { data: { session }, error: null };
++  } } });
++  assert.equal(await auth.verifyCode({ email: 'New@Example.com', token: ' 123456 ' }), session);
++});
+diff --git a/tests/screens.test.mjs b/tests/screens.test.mjs
+new file mode 100644
+index 0000000..9798689
+--- /dev/null
++++ b/tests/screens.test.mjs
+@@ -0,0 +1,162 @@
++import { test, after } from 'node:test';
++import assert from 'node:assert/strict';
++import { mkdtemp, rm } from 'node:fs/promises';
++import { resolve } from 'node:path';
++import { pathToFileURL } from 'node:url';
++import { build } from 'esbuild';
++import React from 'react';
++import Renderer, { act } from 'react-test-renderer';
++import { MemoryRouter } from 'react-router-dom';
++
++const temporary = await mkdtemp(resolve('tests/.screens-'));
++after(() => rm(temporary, { recursive: true, force: true }));
++const preventDefault = () => {};
++const mocks = {
++  useAuth: 'export const useAuth = () => globalThis.__auth;',
++  authService: 'export const demoEnabled = false; export const DEMO_USERS = {}; export const authService = new Proxy({}, {get: (_, key) => (...args) => globalThis.__authService[key](...args)});',
++  knowledgeService: 'export const knowledgeService = new Proxy({}, {get: (_, key) => (...args) => globalThis.__knowledge[key](...args)});',
++  supabaseClient: 'export const supabase = null; export const isSupabaseConfigured = false;',
++  OnboardingModal: 'export const OnboardingModal = () => null;',
++  GlobalDnsCloudModal: 'export const GlobalDnsCloudModal = () => null;',
++  'interactive-dot-background': 'export const InteractiveDotBackground = () => null;',
++};
++async function component(path, name) {
++  const outfile = resolve(temporary, `${name}.mjs`);
++  await build({ entryPoints: [resolve(path)], outfile, bundle: true, platform: 'node', format: 'esm',
++    external: ['react', 'react-dom', 'react-router-dom'], alias: { '@': resolve('src') },
++    plugins: [{ name: 'isolated-services', setup(builder) {
++      builder.onResolve({ filter: /./ }, (args) => {
++        const key = args.path.split('/').at(-1).replace(/\.(jsx?|tsx?)$/, '');
++        return mocks[key] ? { path: key, namespace: 'mock' } : undefined;
++      });
++      builder.onLoad({ filter: /.*/, namespace: 'mock' }, (args) => ({ contents: mocks[args.path], loader: 'js' }));
++    } }],
++  });
++  return (await import(pathToFileURL(outfile)))[name];
++}
++function memoryStorage() {
++  const values = new Map();
++  return { getItem: (key) => values.get(key) || null, setItem: (key, value) => values.set(key, String(value)), removeItem: (key) => values.delete(key) };
++}
++function reset() {
++  globalThis.localStorage = memoryStorage();
++  globalThis.sessionStorage = memoryStorage();
++  globalThis.window = { addEventListener() {}, removeEventListener() {} };
++  globalThis.__auth = {};
++}
++async function render(Component, props = {}) {
++  let tree;
++  await act(async () => { tree = Renderer.create(React.createElement(MemoryRouter, { future: { v7_startTransition: true, v7_relativeSplatPath: true } }, React.createElement(Component, props))); });
++  return tree;
++}
++const screenText = (tree) => JSON.stringify(tree.toJSON());
++const buttons = (tree, label) => tree.root.findAllByType('button').filter((button) => button.children.join('') === label);
++
++test('sign-in stays on verification after an invalid code, then continues after a valid code', async () => {
++  reset(); let verified = false;
++  globalThis.__auth = {
++    login: async ({ email }) => ({ email, requiresVerification: true }),
++    verifyEmail: async ({ token }) => { if (token !== '654321') throw new Error('Invalid or expired code'); verified = true; },
++  };
++  const Login = await component('src/pages/Login.jsx', 'Login');
++  const tree = await render(Login);
++  try {
++    await act(async () => tree.root.findByProps({ id: 'login-email' }).props.onChange({ target: { value: 'member@example.com' } }));
++    await act(async () => tree.root.findByType('form').props.onSubmit({ preventDefault }));
++    assert.equal(verified, false);
++    assert.match(screenText(tree), /Verify your email/);
++    assert.equal(buttons(tree, 'ADMIN').length, 0);
++    await act(async () => tree.root.findByProps({ id: 'email-code' }).props.onChange({ target: { value: '123456' } }));
++    await act(async () => tree.root.findByType('form').props.onSubmit({ preventDefault }));
++    assert.match(screenText(tree), /Invalid or expired code/);
++    assert.equal(verified, false);
++    await act(async () => tree.root.findByProps({ id: 'email-code' }).props.onChange({ target: { value: '654321' } }));
++    await act(async () => tree.root.findByType('form').props.onSubmit({ preventDefault }));
++    assert.equal(verified, true);
++  } finally { act(() => tree.unmount()); }
++});
++
++test('registration requires the email code before onboarding', async () => {
++  reset(); let verified = false;
++  globalThis.__auth = { register: async ({ email }) => ({ email, requiresVerification: true }), verifyEmail: async () => { verified = true; return { name: 'New Student' }; } };
++  const Register = await component('src/pages/Register.jsx', 'Register');
++  const tree = await render(Register);
++  try {
++    for (const [name, value] of [['name', 'New Student'], ['email', 'new@example.com'], ['rollNumber', '2026-123']]) {
++      await act(async () => tree.root.findByProps({ name }).props.onChange({ target: { name, value } }));
++    }
++    await act(async () => tree.root.findByType('form').props.onSubmit({ preventDefault }));
++    assert.equal(verified, false);
++    assert.match(screenText(tree), /Verify your email/);
++    await act(async () => tree.root.findByProps({ id: 'email-code' }).props.onChange({ target: { value: '123456' } }));
++    await act(async () => tree.root.findByType('form').props.onSubmit({ preventDefault }));
++    assert.equal(verified, true);
++    assert.equal(tree.root.findAllByProps({ id: 'email-code' }).length, 0);
++  } finally { act(() => tree.unmount()); }
++});
++
++test('comment controls use account IDs, preserve failed changes, and persist edits/deletions', async () => {
++  reset(); let failDelete = true; let lastSaved;
++  let rows = [{ id: 'one', authUserId: 'owner', user: 'Same Name', role: 'STUDENT', text: 'My comment', time: 'Today' },
++    { id: 'two', authUserId: 'other', user: 'Same Name', role: 'STUDENT', text: 'Other comment', time: 'Today' }];
++  globalThis.__knowledge = {
++    getComments: async () => rows,
++    editComment: async (_, id, text) => { rows = rows.map((row) => row.id === id ? { ...row, text, edited: true } : row); return rows.find((row) => row.id === id); },
++    deleteComment: async (_, id) => { if (failDelete) throw new Error('Connection lost. Please try again.'); rows = rows.filter((row) => row.id !== id); },
++  };
++  const Thread = await component('src/components/common/CommentThread.jsx', 'CommentThread');
++  const tree = await render(Thread, { entryId: 'post', authUserId: 'owner', onCommentsChange: (_, value) => { lastSaved = value; } });
++  try {
++    assert.equal(buttons(tree, 'Edit').length, 1);
++    assert.equal(buttons(tree, 'Delete').length, 1);
++    await act(async () => buttons(tree, 'Edit')[0].props.onClick());
++    await act(async () => tree.root.findByProps({ 'aria-label': 'Edit comment' }).props.onChange({ target: { value: 'Edited by owner' } }));
++    await act(async () => tree.root.findAllByType('form')[0].props.onSubmit({ preventDefault }));
++    assert.match(screenText(tree), /Edited by owner/);
++    assert.equal(lastSaved[0].edited, true);
++    await act(async () => buttons(tree, 'Delete')[0].props.onClick());
++    assert.match(screenText(tree), /Delete this comment/);
++    await act(async () => buttons(tree, 'Delete')[0].props.onClick());
++    assert.match(screenText(tree), /Connection lost/);
++    assert.equal(lastSaved.length, 2);
++    failDelete = false;
++    await act(async () => buttons(tree, 'Delete')[0].props.onClick());
++    assert.equal(lastSaved.length, 1);
++    assert.match(screenText(tree), /Other comment/);
++    assert.doesNotMatch(screenText(tree), /Edited by owner/);
++  } finally { act(() => tree.unmount()); }
++  const reloaded = await render(Thread, { entryId: 'post', authUserId: 'owner', onCommentsChange() {} });
++  assert.doesNotMatch(screenText(reloaded), /Edited by owner/);
++  act(() => reloaded.unmount());
++});
++
++test('auth context ignores cached fake sessions and only accepts the completed verification', async () => {
++  reset();
++  localStorage.setItem('knowpass_user', JSON.stringify({ role: 'ADMIN' }));
++  localStorage.setItem('knowpass_access_token', 'old_fake_token');
++  globalThis.__authService = {
++    getCurrentUser: async () => null,
++    login: async () => ({ email: 'member@example.com', requiresVerification: true }),
++    register: async () => ({ email: 'member@example.com', requiresVerification: true }),
++    verifyEmail: async () => ({ id: 'profile', authId: 'owner', emailVerified: true, role: 'STUDENT' }),
++    logout: async () => {},
++  };
++  const Provider = await component('src/context/AuthContext.jsx', 'AuthProvider');
++  const { AuthContext } = await import(pathToFileURL(resolve(temporary, 'AuthProvider.mjs')));
++  let context; let tree;
++  function Observe() { context = React.useContext(AuthContext); return null; }
++  await act(async () => { tree = Renderer.create(React.createElement(Provider, null, React.createElement(Observe))); });
++  try {
++    assert.equal(context.isAuthenticated, false);
++    await act(async () => context.login({ email: 'member@example.com' }));
++    assert.equal(context.isAuthenticated, false);
++    await act(async () => context.register({ email: 'member@example.com' }));
++    assert.equal(context.isAuthenticated, false);
++    await act(async () => context.verifyEmail({ email: 'member@example.com', token: '123456' }));
++    assert.equal(context.isAuthenticated, true);
++    await act(async () => context.switchRole('ADMIN'));
++    assert.equal(context.role, 'STUDENT');
++    await act(async () => context.logout());
++    assert.equal(context.isAuthenticated, false);
++  } finally { act(() => tree.unmount()); }
++});
