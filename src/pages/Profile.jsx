@@ -9,7 +9,7 @@ import { Button } from '../components/common/Button';
 import { GlobalDnsCloudModal } from '../components/common/GlobalDnsCloudModal';
 import { ImageCropModal } from '../components/common/ImageCropModal';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
-import { knowledgeService } from '../services/knowledgeService';
+import { knowledgeService, getMyContributedIds, getAliasHistory } from '../services/knowledgeService';
 import {
   User,
   ShieldCheck,
@@ -125,13 +125,17 @@ export function Profile() {
         if (isMounted && res && res.items) {
           const userName = (user?.name || '').trim().toLowerCase();
           const userEmail = (user?.email || '').trim().toLowerCase();
+          const myIds = getMyContributedIds(user?.email);
+          const aliases = getAliasHistory(user?.email);
 
           const mine = res.items.filter((item) => {
             const author = (item.author || '').trim().toLowerCase();
             return (
               author === userName ||
               author === userEmail ||
-              (user?.email && item.authorEmail === user.email)
+              (user?.email && item.authorEmail === user.email) ||
+              myIds.includes(item.id) ||
+              aliases.includes(author)
             );
           });
           setMyContributions(mine);
@@ -287,10 +291,45 @@ International Higher Education Knowledge Alliance
         avatar: editFormData.avatar.trim() || user?.avatar,
       };
 
+      const oldName = user?.name;
+      const oldEmail = user?.email;
+
       // 1. Update in-memory and local storage
       if (updateUser) {
         updateUser(updatedFields);
       }
+
+      // 2. Sync all previously contributed notes to the new profile
+      await knowledgeService.updateAuthorContributions({
+        oldName,
+        newProfile: {
+          ...updatedFields,
+          role: user?.role || 'STUDENT',
+          email: user?.email,
+        },
+        userEmail: oldEmail,
+      });
+
+      // 3. Immediately update myContributions in local state
+      setMyContributions((prev) =>
+        prev.map((item) => ({
+          ...item,
+          author: updatedFields.name,
+          authorAvatar: updatedFields.avatar,
+          authorRole: user?.role || item.authorRole,
+        }))
+      );
+
+      // 4. Dispatch global event so all open pages/modals update immediately
+      window.dispatchEvent(
+        new CustomEvent('knowpass-profile-updated', {
+          detail: {
+            ...updatedFields,
+            email: user?.email,
+            role: user?.role,
+          },
+        })
+      );
 
       // 2. Update Supabase Auth metadata & PostgreSQL profiles table
       if (isSupabaseConfigured && supabase) {

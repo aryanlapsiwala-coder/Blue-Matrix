@@ -483,6 +483,83 @@ export const SAMPLE_KNOWLEDGE_ITEMS = [
 ];
 
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import { tokenStorage } from '../utils/tokenStorage';
+
+// Contribution Ownership & Author Sync Helpers
+export const getMyContributedIds = (userEmail) => {
+  try {
+    const globalIds = JSON.parse(localStorage.getItem('knowpass_local_contrib_ids') || '[]');
+    const userIds = userEmail
+      ? JSON.parse(localStorage.getItem(`knowpass_my_contrib_ids_${userEmail}`) || '[]')
+      : [];
+    return Array.from(new Set([...globalIds, ...userIds]));
+  } catch {
+    return [];
+  }
+};
+
+export const recordUserContributionId = (id, userEmail) => {
+  if (!id) return;
+  try {
+    const globalIds = JSON.parse(localStorage.getItem('knowpass_local_contrib_ids') || '[]');
+    if (!globalIds.includes(id)) {
+      globalIds.push(id);
+      localStorage.setItem('knowpass_local_contrib_ids', JSON.stringify(globalIds));
+    }
+    if (userEmail) {
+      const userIds = JSON.parse(localStorage.getItem(`knowpass_my_contrib_ids_${userEmail}`) || '[]');
+      if (!userIds.includes(id)) {
+        userIds.push(id);
+        localStorage.setItem(`knowpass_my_contrib_ids_${userEmail}`, JSON.stringify(userIds));
+      }
+    }
+  } catch (e) {
+    console.warn('Error recording user contribution id:', e);
+  }
+};
+
+export const getAliasHistory = (userEmail) => {
+  const defaults = ['ghost'];
+  try {
+    const key = `knowpass_user_aliases_${userEmail || 'global'}`;
+    const raw = localStorage.getItem(key);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.from(new Set([...defaults, ...list.map((a) => (a || '').trim().toLowerCase())]));
+  } catch {
+    return defaults;
+  }
+};
+
+export const syncAuthorProfileOnItem = (item, currentUser, aliases = ['ghost'], myContribIds = []) => {
+  if (!item) return item;
+  if (!currentUser || (!currentUser.name && !currentUser.email)) return item;
+
+  const currentEmail = (currentUser.email || '').trim().toLowerCase();
+  const currentName = (currentUser.name || '').trim().toLowerCase();
+  const itemAuthor = (item.author || '').trim().toLowerCase();
+  const itemEmail = (item.authorEmail || '').trim().toLowerCase();
+
+  const isMine =
+    (itemEmail && currentEmail && itemEmail === currentEmail) ||
+    (currentName && itemAuthor === currentName) ||
+    aliases.includes(itemAuthor) ||
+    (item.id && myContribIds.includes(item.id)) ||
+    // If it's a locally created custom entry (id starts with 'kb_' or in local storage)
+    (String(item.id).startsWith('kb_') && (aliases.includes(itemAuthor) || itemAuthor === 'ghost' || !item.authorEmail));
+
+  if (isMine) {
+    return {
+      ...item,
+      author: currentUser.name || item.author,
+      authorAvatar: currentUser.avatar || item.authorAvatar,
+      authorRole: currentUser.role || item.authorRole || 'STUDENT',
+      authorBio: currentUser.bio !== undefined ? currentUser.bio : item.authorBio,
+      authorEmail: currentUser.email || item.authorEmail,
+    };
+  }
+
+  return item;
+};
 
 // Local storage persistence helpers for guaranteed retention across sessions
 const getLocalUpvotes = () => {
@@ -628,6 +705,28 @@ export const knowledgeService = {
     const upvotesCache = getLocalUpvotes();
     const localCustom = getLocalCustomEntries();
     const deletedIds = getDeletedEntryIds();
+    const currentUser = tokenStorage.getUser();
+    const aliases = getAliasHistory(currentUser?.email);
+    const myContribIds = getMyContributedIds(currentUser?.email);
+
+    // Auto-heal / sync localCustom if user changed profile
+    if (currentUser && (currentUser.name || currentUser.avatar)) {
+      try {
+        let changed = false;
+        const updatedLocalCustom = localCustom.map((lc) => {
+          const synced = syncAuthorProfileOnItem(lc, currentUser, aliases, myContribIds);
+          if (synced.author !== lc.author || synced.authorAvatar !== lc.authorAvatar) {
+            changed = true;
+          }
+          return synced;
+        });
+        if (changed) {
+          localStorage.setItem('knowpass_custom_entries', JSON.stringify(updatedLocalCustom));
+        }
+      } catch (e) {
+        console.warn('Error auto-syncing local custom entries:', e);
+      }
+    }
 
     // 1. If Supabase is configured, fetch live rows from PostgreSQL
     if (isSupabaseConfigured && supabase) {
@@ -693,9 +792,13 @@ export const knowledgeService = {
               }
             });
 
+          const finalMapped = mapped.map((item) =>
+            syncAuthorProfileOnItem(item, currentUser, aliases, myContribIds)
+          );
+
           return {
-            items: mapped,
-            total: mapped.length,
+            items: finalMapped,
+            total: finalMapped.length,
           };
         }
       } catch (err) {
@@ -707,7 +810,10 @@ export const knowledgeService = {
     try {
       const response = await api.get('/knowledge', { params });
       const items = (response.data?.items || response.data || []).filter((it) => !deletedIds.includes(it.id));
-      return { items, total: items.length };
+      const finalItems = items.map((item) =>
+        syncAuthorProfileOnItem(item, currentUser, aliases, myContribIds)
+      );
+      return { items: finalItems, total: finalItems.length };
     } catch {
       // Merge localCustom into fallback (excluding deleted entries)
       const combined = [...localCustom.filter((lc) => !deletedIds.includes(lc.id))];
@@ -751,7 +857,10 @@ export const knowledgeService = {
             ensureArrayTags(item.tags).some((t) => typeof t === 'string' && t.toLowerCase().includes(q))
         );
       }
-      return { items: filtered, total: filtered.length };
+      const finalFiltered = filtered.map((item) =>
+        syncAuthorProfileOnItem(item, currentUser, aliases, myContribIds)
+      );
+      return { items: finalFiltered, total: finalFiltered.length };
     }
   },
 
@@ -761,12 +870,16 @@ export const knowledgeService = {
       return null;
     }
     const upvotesCache = getLocalUpvotes();
+    const currentUser = tokenStorage.getUser();
+    const aliases = getAliasHistory(currentUser?.email);
+    const myContribIds = getMyContributedIds(currentUser?.email);
+
     if (isSupabaseConfigured && supabase) {
       try {
         const { data, error } = await supabase.from('knowledge_entries').select('*').eq('id', id).single();
         if (!error && data) {
           const effectiveUpvotes = upvotesCache[data.id] !== undefined ? Math.max(data.upvotes || 0, upvotesCache[data.id]) : (data.upvotes || 0);
-          return {
+          const rawItem = {
             id: data.id,
             title: data.title,
             category: data.category,
@@ -789,6 +902,7 @@ export const knowledgeService = {
             resources: data.resources || { files: [] },
             comments: getLocalComments(data.id),
           };
+          return syncAuthorProfileOnItem(rawItem, currentUser, aliases, myContribIds);
         }
       } catch (err) {
         console.warn('[knowledgeService] Supabase getById fallback:', err.message);
@@ -797,14 +911,15 @@ export const knowledgeService = {
 
     try {
       const response = await api.get(`/knowledge/${id}`);
-      return response.data;
+      return syncAuthorProfileOnItem(response.data, currentUser, aliases, myContribIds);
     } catch {
       const base = SAMPLE_KNOWLEDGE_ITEMS.find((item) => item.id === id) || SAMPLE_KNOWLEDGE_ITEMS[0];
-      return {
+      const result = {
         ...base,
         upvotes: upvotesCache[base.id] !== undefined ? Math.max(base.upvotes, upvotesCache[base.id]) : base.upvotes,
         comments: [...(base.comments || []), ...getLocalComments(base.id)],
       };
+      return syncAuthorProfileOnItem(result, currentUser, aliases, myContribIds);
     }
   },
 
@@ -892,7 +1007,11 @@ export const knowledgeService = {
 
     // Always persist to local cache so user immediately sees it upon redirect or refresh
     if (finalItem) {
+      if (data.authorEmail) {
+        finalItem.authorEmail = data.authorEmail;
+      }
       saveLocalCustomEntry(finalItem);
+      recordUserContributionId(finalItem.id, data.authorEmail);
     }
 
     // 🧠 Instant AI Vector Learning: Dynamically embed document in KnowBot AI engine
@@ -1088,6 +1207,123 @@ export const knowledgeService = {
       await api.put(`/knowledge/${id}`, updateData);
     } catch {
       // ignore
+    }
+
+    return true;
+  },
+
+  updateAuthorContributions: async ({ oldName, newProfile, userEmail }) => {
+    if (!newProfile) return false;
+
+    const newName = (newProfile.name || '').trim();
+    const newAvatar = newProfile.avatar || '';
+    const newRole = newProfile.role || '';
+    const newBio = newProfile.bio || '';
+    const email = (userEmail || newProfile.email || '').trim().toLowerCase();
+
+    // Record alias in history
+    const aliasKey = `knowpass_user_aliases_${email || 'global'}`;
+    let aliases = ['ghost'];
+    try {
+      const stored = localStorage.getItem(aliasKey);
+      if (stored) aliases = [...aliases, ...JSON.parse(stored)];
+    } catch {}
+    if (oldName && !aliases.some((a) => a.toLowerCase() === oldName.trim().toLowerCase())) {
+      aliases.push(oldName.trim());
+    }
+    try {
+      localStorage.setItem(aliasKey, JSON.stringify(Array.from(new Set(aliases))));
+    } catch {}
+
+    const myContribIds = getMyContributedIds(email);
+
+    // 1. Update in-memory SAMPLE_KNOWLEDGE_ITEMS
+    SAMPLE_KNOWLEDGE_ITEMS.forEach((it) => {
+      const itAuthor = (it.author || '').trim().toLowerCase();
+      const itEmail = (it.authorEmail || '').trim().toLowerCase();
+
+      const isMine =
+        (itEmail && email && itEmail === email) ||
+        (oldName && itAuthor === oldName.trim().toLowerCase()) ||
+        (newName && itAuthor === newName.toLowerCase()) ||
+        aliases.some((a) => a.toLowerCase() === itAuthor) ||
+        myContribIds.includes(it.id);
+
+      if (isMine) {
+        if (newName) it.author = newName;
+        if (newAvatar) it.authorAvatar = newAvatar;
+        if (newRole) it.authorRole = newRole;
+        if (newBio !== undefined) it.authorBio = newBio;
+        if (email) it.authorEmail = email;
+      }
+    });
+
+    // 2. Update localStorage custom entries ('knowpass_custom_entries')
+    try {
+      const customEntries = getLocalCustomEntries();
+      const updatedEntries = customEntries.map((it) => {
+        const itAuthor = (it.author || '').trim().toLowerCase();
+        const itEmail = (it.authorEmail || '').trim().toLowerCase();
+
+        const isMine =
+          (itEmail && email && itEmail === email) ||
+          (oldName && itAuthor === oldName.trim().toLowerCase()) ||
+          (newName && itAuthor === newName.toLowerCase()) ||
+          aliases.some((a) => a.toLowerCase() === itAuthor) ||
+          myContribIds.includes(it.id) ||
+          !it.authorEmail; // Local entries created on this client without authorEmail belong to current user
+
+        if (isMine) {
+          if (!myContribIds.includes(it.id)) {
+            recordUserContributionId(it.id, email);
+          }
+          return {
+            ...it,
+            author: newName || it.author,
+            authorAvatar: newAvatar || it.authorAvatar,
+            authorRole: newRole || it.authorRole,
+            authorBio: newBio !== undefined ? newBio : it.authorBio,
+            authorEmail: email || it.authorEmail,
+          };
+        }
+        return it;
+      });
+      localStorage.setItem('knowpass_custom_entries', JSON.stringify(updatedEntries));
+    } catch (e) {
+      console.warn('Error updating local custom entries:', e);
+    }
+
+    // 3. Update Supabase PostgreSQL table (if configured)
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const namesToMatch = Array.from(
+          new Set([oldName, newName, 'Ghost', ...aliases].filter(Boolean))
+        );
+        for (const name of namesToMatch) {
+          try {
+            const payload = { author_name: newName };
+            if (newRole) payload.author_role = newRole;
+            if (newAvatar) payload.author_avatar = newAvatar;
+
+            await supabase
+              .from('knowledge_entries')
+              .update(payload)
+              .ilike('author_name', name);
+          } catch (err) {
+            // Fallback if author_avatar column doesn't exist
+            try {
+              await supabase
+                .from('knowledge_entries')
+                .update({ author_name: newName, author_role: newRole || 'STUDENT' })
+                .ilike('author_name', name);
+            } catch (fallbackErr) {
+              console.warn('Supabase update fallback error:', fallbackErr.message);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[knowledgeService] Supabase author sync error:', err.message);
+      }
     }
 
     return true;

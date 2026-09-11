@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Card, CardHeader } from '../components/common/Card';
 import { Button } from '../components/common/Button';
-import { knowledgeService, SAMPLE_KNOWLEDGE_ITEMS } from '../services/knowledgeService';
+import { knowledgeService, SAMPLE_KNOWLEDGE_ITEMS, getMyContributedIds, getAliasHistory } from '../services/knowledgeService';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { ROLES, ROLE_CONFIG } from '../constants/roles';
 import { formatDate } from '../utils/formatters';
@@ -154,6 +154,10 @@ export function KnowledgeBase() {
     if (role === ROLES.ADMIN) return true;
     if (user?.name && item.author && item.author.trim().toLowerCase() === user.name.trim().toLowerCase()) return true;
     if (user?.email && item.authorEmail && item.authorEmail.trim().toLowerCase() === user.email.trim().toLowerCase()) return true;
+    const myIds = getMyContributedIds(user?.email);
+    if (item.id && myIds.includes(item.id)) return true;
+    const aliases = getAliasHistory(user?.email);
+    if (item.author && aliases.includes(item.author.trim().toLowerCase())) return true;
     return false;
   };
 
@@ -181,6 +185,10 @@ export function KnowledgeBase() {
 
     if (currentUserEmail && authorEmail && currentUserEmail === authorEmail) return true;
     if (currentName && authorName && currentName === authorName) return true;
+    const myIds = getMyContributedIds(user?.email);
+    if (item.id && myIds.includes(item.id)) return true;
+    const aliases = getAliasHistory(user?.email);
+    if (authorName && aliases.includes(authorName)) return true;
     return false;
   };
 
@@ -247,6 +255,46 @@ export function KnowledgeBase() {
       isMounted = false;
     };
   }, [selectedDept, selectedType, selectedYear, minRating, searchQuery]);
+
+  // Listen for real-time profile updates (e.g. user updated avatar or name in Profile)
+  useEffect(() => {
+    const handleProfileUpdate = (e) => {
+      const updatedFields = e.detail;
+      if (!updatedFields) return;
+
+      setItems((prevItems) =>
+        prevItems.map((item) => {
+          if (canUserEdit(item)) {
+            return {
+              ...item,
+              author: updatedFields.name || item.author,
+              authorAvatar: updatedFields.avatar || item.authorAvatar,
+              authorRole: updatedFields.role || item.authorRole,
+              authorBio: updatedFields.bio !== undefined ? updatedFields.bio : item.authorBio,
+            };
+          }
+          return item;
+        })
+      );
+
+      setActiveItem((prev) => {
+        if (!prev) return prev;
+        if (canUserEdit(prev)) {
+          return {
+            ...prev,
+            author: updatedFields.name || prev.author,
+            authorAvatar: updatedFields.avatar || prev.authorAvatar,
+            authorRole: updatedFields.role || prev.authorRole,
+            authorBio: updatedFields.bio !== undefined ? updatedFields.bio : prev.authorBio,
+          };
+        }
+        return prev;
+      });
+    };
+
+    window.addEventListener('knowpass-profile-updated', handleProfileUpdate);
+    return () => window.removeEventListener('knowpass-profile-updated', handleProfileUpdate);
+  }, [user?.name, user?.email, role]);
 
   // Real-time filtering logic
   const filteredItems = useMemo(() => {

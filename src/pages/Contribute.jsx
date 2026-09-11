@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { ROUTES } from '../constants/routes';
-import { knowledgeService } from '../services/knowledgeService';
+import { knowledgeService, recordUserContributionId } from '../services/knowledgeService';
 import { pushCampusNotification } from '../services/notificationService';
 import { Card, CardHeader } from '../components/common/Card';
 import { Button } from '../components/common/Button';
@@ -319,8 +319,11 @@ ${description.slice(0, 220)}...
         knowledgeType: knowledgeType,
         department: department,
         author: user?.name || 'Campus Contributor',
+        authorEmail: user?.email || '',
+        authorId: user?.id || '',
         authorRole: role || 'STUDENT',
         authorAvatar: user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+        authorBio: user?.bio || '',
         summary: description.slice(0, 150) + '...',
         content: finalBody,
         tags: tags,
@@ -332,7 +335,10 @@ ${description.slice(0, 220)}...
         aiEnhanced: useAIVersion,
       };
 
-      await knowledgeService.create(payload);
+      const createdItem = await knowledgeService.create(payload);
+      if (createdItem && createdItem.id) {
+        recordUserContributionId(createdItem.id, user?.email);
+      }
       if (awardPoints) {
         awardPoints(50, `Published "${title.trim()}"`);
       }
