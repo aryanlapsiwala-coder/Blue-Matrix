@@ -33,17 +33,6 @@ export const DEMO_USERS = {
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
     joinedDate: '2023-06-15',
   },
-  [ROLES.TECHNICIAN]: {
-    id: 'usr_alumni_01',
-    name: 'Vikram Malhotra',
-    email: 'vikram.malhotra@nvidia.com',
-    role: ROLES.ALUMNI,
-    department: 'Mechanical & Robotics Engineering',
-    graduationYear: 'Class of 2023',
-    currentCompany: 'NVIDIA (Senior Robotics Software Engineer)',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-    joinedDate: '2023-06-15',
-  },
   [ROLES.ADMIN]: {
     id: 'usr_admin_01',
     name: 'Eleanor Vance (Admin)',

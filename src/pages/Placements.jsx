@@ -76,7 +76,7 @@ const INITIAL_COMPANY_INSIGHTS = [
     department: 'Central Computing & Hardware Labs',
     batchYear: '2025 Placed',
     author: 'Marcus Ramirez',
-    authorRole: 'TECHNICIAN',
+    authorRole: 'ALUMNI',
     ctcRange: '₹38.0 LPA (₹24L Base + Equity)',
     roundsCount: 4,
     rounds: [

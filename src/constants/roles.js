@@ -5,7 +5,6 @@ export const ROLES = {
   STUDENT: 'STUDENT',
   ALUMNI: 'ALUMNI',
   FACULTY: 'FACULTY',
-  TECHNICIAN: 'ALUMNI', // backwards compatibility alias mapped to ALUMNI
   ADMIN: 'ADMIN',
 };
 

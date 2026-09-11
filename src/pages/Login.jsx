@@ -168,18 +168,22 @@ export function Login() {
               Select Simulated Campus Role:
             </label>
             <div className="grid grid-cols-2 gap-2">
-              {Object.values(ROLES).map((r) => {
-                const config = ROLE_CONFIG[r];
-                const isSelected = formData.role === r;
+              {[
+                { role: ROLES.STUDENT, label: '🎓 Junior Student' },
+                { role: ROLES.ALUMNI, label: '💼 Passed-Out Alumni' },
+                { role: ROLES.FACULTY, label: '🏛️ Faculty' },
+                { role: ROLES.ADMIN, label: '🛡️ Administrator' },
+              ].map((item) => {
+                const isSelected = formData.role === item.role;
                 return (
                   <button
-                    key={r}
+                    key={item.role}
                     type="button"
                     onClick={() => {
                       setFormData((prev) => ({
                         ...prev,
-                        role: r,
-                        email: prev.email ? prev.email : `${r.toLowerCase()}@campus.edu`,
+                        role: item.role,
+                        email: prev.email ? prev.email : (item.role === ROLES.ALUMNI ? 'alumni.vikram@nvidia.com' : `${item.role.toLowerCase()}@campus.edu`),
                       }));
                     }}
                     className={`flex items-center justify-between p-2.5 rounded-xl border text-xs text-left transition ${
@@ -188,7 +192,7 @@ export function Login() {
                         : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-slate-50/50'
                     }`}
                   >
-                    <span>{config.label}</span>
+                    <span>{item.label}</span>
                     {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" />}
                   </button>
                 );
@@ -197,10 +201,11 @@ export function Login() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Campus Email */}
+            {/* Campus Email / Personal Email */}
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                Campus Email <span className="text-rose-500">*</span>
+                {formData.role === ROLES.ALUMNI ? 'Personal / Work Email (No College ID Required)' : 'Campus Email / Student ID'}{' '}
+                <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -210,7 +215,11 @@ export function Login() {
                   value={formData.email}
                   onChange={handleChange}
                   onBlur={() => handleBlur('email')}
-                  placeholder={`${formData.role.toLowerCase()}@campus.edu`}
+                  placeholder={
+                    formData.role === ROLES.ALUMNI
+                      ? 'name@company.com or personal@gmail.com'
+                      : `${formData.role.toLowerCase()}@campus.edu`
+                  }
                   className={`w-full text-sm pl-10 pr-4 py-2.5 bg-slate-50 border rounded-xl outline-none transition ${
                     errors.email && touched.email
                       ? 'border-rose-300 bg-rose-50/40 focus:border-rose-500 focus:ring-2 focus:ring-rose-100'

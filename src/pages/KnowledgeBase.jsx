@@ -1349,8 +1349,8 @@ export function KnowledgeBase() {
                   <span>{likedEntries.includes(activeItem.id) ? 'Upvoted' : 'Upvote'} ({activeItem.upvotes})</span>
                 </Button>
 
-                {/* Verify Button for Faculty, Tech, Admin */}
-                {[ROLES.FACULTY, ROLES.TECHNICIAN, ROLES.ADMIN].includes(role) && (
+                {/* Verify Button for Faculty, Alumni, Admin */}
+                {[ROLES.FACULTY, ROLES.ALUMNI, ROLES.ADMIN].includes(role) && (
                   <Button
                     size="sm"
                     variant={activeItem.isVerified ? 'secondary' : 'primary'}
@@ -1362,7 +1362,7 @@ export function KnowledgeBase() {
                     }
                   >
                     <CheckCircle2 className="w-4 h-4 mr-1 text-emerald-600" />
-                    {activeItem.isVerified ? 'Verified by Faculty/Tech' : 'Verify & Endorse Resource'}
+                    {activeItem.isVerified ? 'Verified by Faculty/Alumni' : 'Verify & Endorse Resource'}
                   </Button>
                 )}
 
