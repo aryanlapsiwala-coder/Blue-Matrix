@@ -662,7 +662,7 @@ export function Leaderboard() {
         </div>
       </div>
 
-      {/* Quick Link Banner to Dedicated Privileges & Knowledge Flywheel Page */}
+      {/* Quick Link Banner to Dedicated Privileges & Perks Page */}
       <div className="p-4 bg-gradient-to-r from-indigo-50/80 via-white to-purple-50/80 border border-indigo-100 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-2xs">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
@@ -673,7 +673,7 @@ export function Leaderboard() {
               {activeBoard === 'students' ? '🎓 Looking for your Fast-Track Referral Tokens & Mock Interviews?' : '💼 Looking for the Corporate Referral Bonus Pipeline & Convocation Citations?'}
             </span>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Explore the full privileges matrix and the interactive Symbiotic Knowledge Flywheel in the dedicated Privileges menu.
+              Explore your full privileges and career unlock benefits in the dedicated Privileges menu.
             </p>
           </div>
         </div>
@@ -681,7 +681,7 @@ export function Leaderboard() {
           to={ROUTES.PRIVILEGES}
           className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition flex items-center gap-1.5 shrink-0 shadow-xs"
         >
-          <span>View Privileges & Flywheel</span>
+          <span>View Privileges & Perks</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
