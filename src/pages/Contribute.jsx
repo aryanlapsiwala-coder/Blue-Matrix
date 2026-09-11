@@ -316,9 +316,11 @@ ${description.slice(0, 220)}...
       const payload = {
         title: title.trim(),
         category: knowledgeType,
+        knowledgeType: knowledgeType,
         department: department,
         author: user?.name || 'Campus Contributor',
         authorRole: role || 'STUDENT',
+        authorAvatar: user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
         summary: description.slice(0, 150) + '...',
         content: finalBody,
         tags: tags,
@@ -446,21 +448,54 @@ ${description.slice(0, 220)}...
         </div>
       </div>
 
-      {/* Success Notification */}
-      {submitted && (
-        <div className="p-5 bg-emerald-50 border border-emerald-200 rounded-3xl flex items-center gap-4 text-emerald-900 animate-in fade-in">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0">
-            <CheckCircle2 className="w-6 h-6" />
+      {/* Submitted View or 5-Step Workflow */}
+      {submitted ? (
+        <Card className="p-8 sm:p-12 text-center space-y-6 animate-in fade-in zoom-in-95 bg-white border border-slate-200/90 shadow-lg rounded-3xl">
+          <div className="w-16 h-16 rounded-3xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto ring-8 ring-emerald-50/50 shadow-inner">
+            <CheckCircle2 className="w-8 h-8" />
           </div>
-          <div>
-            <h3 className="font-bold text-sm">Knowledge Resource Published Successfully!</h3>
-            <p className="text-xs text-emerald-700 mt-0.5">
-              Your contribution is now indexed in the KnowPass knowledge repository. Redirecting...
+          <div className="space-y-1.5 max-w-md mx-auto">
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900">
+              Knowledge Published & Vectorized!
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+              "{title.trim() || 'Your resource'}" is now permanently indexed in the central Knowledge Base and available to all campus scholars.
             </p>
           </div>
-        </div>
-      )}
 
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-bold">
+            <Sparkles className="w-4 h-4 text-amber-500" />
+            <span>+50 KnowPoints Credited to Your Account</span>
+          </div>
+
+          <div className="pt-3 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Button
+              onClick={() => navigate(ROUTES.KNOWLEDGE_BASE)}
+              className="text-xs px-6 py-2.5 shadow-md shadow-indigo-600/20"
+            >
+              Go to Knowledge Base Now
+              <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSubmitted(false);
+                setCurrentStep(1);
+                setTitle('');
+                setDescription('');
+                setUploadedFiles([]);
+                setYoutubeUrl('');
+                setAiEnhancedContent('');
+                setIntegrityAgreed(false);
+              }}
+              className="text-xs"
+            >
+              Publish Another Resource
+            </Button>
+          </div>
+        </Card>
+      ) : (
+        <>
       {/* STEP 1: Choose Knowledge Type */}
       {currentStep === 1 && (
         <Card className="p-6 sm:p-8 animate-in fade-in duration-200">
@@ -1126,6 +1161,8 @@ ${description.slice(0, 220)}...
           </Button>
         )}
       </div>
+      </>
+      )}
     </div>
   );
 }

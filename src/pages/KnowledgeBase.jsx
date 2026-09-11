@@ -296,12 +296,18 @@ export function KnowledgeBase() {
 
   // Top trending items
   const trendingItems = useMemo(() => {
-    return [...(items || [])].sort((a, b) => (Number(b?.upvotes) || 0) - (Number(a?.upvotes) || 0)).slice(0, 3);
+    return [...(items || [])]
+      .filter((item) => item && item.title)
+      .sort((a, b) => (Number(b?.upvotes) || 0) - (Number(a?.upvotes) || 0))
+      .slice(0, 3);
   }, [items]);
 
   // Recently added items
   const recentItems = useMemo(() => {
-    return [...(items || [])].sort((a, b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0)).slice(0, 4);
+    return [...(items || [])]
+      .filter((item) => item && item.title)
+      .sort((a, b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0))
+      .slice(0, 4);
   }, [items]);
 
   // Upvote Handler with 1-Like-per-Account Toggle Protection
@@ -961,7 +967,7 @@ export function KnowledgeBase() {
 
                       {/* Tags */}
                       <div className="flex flex-wrap gap-1.5 mb-4">
-                        {item.tags.map((t) => (
+                        {(Array.isArray(item.tags) ? item.tags : []).map((t) => (
                           <span
                             key={t}
                             className="inline-flex items-center gap-1 text-[10px] font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md"
@@ -1292,7 +1298,7 @@ export function KnowledgeBase() {
                 </div>
 
                 <div className="space-y-2.5">
-                  {activeItem.comments && activeItem.comments.length > 0 ? (
+                  {Array.isArray(activeItem.comments) && activeItem.comments.length > 0 ? (
                     activeItem.comments.map((comm) => (
                       <div
                         key={comm.id}

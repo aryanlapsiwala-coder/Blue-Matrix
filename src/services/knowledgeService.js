@@ -523,9 +523,53 @@ const saveLocalComment = (entryId, comment) => {
   }
 };
 
+// Tag and resource parsing helpers ensuring zero crashes on malformed or stringified database entries
+export const ensureArrayTags = (tags) => {
+  if (Array.isArray(tags)) return tags;
+  if (!tags) return [];
+  if (typeof tags === 'string') {
+    try {
+      const parsed = JSON.parse(tags);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+    const clean = tags.replace(/^\{|\}$/g, '');
+    return clean.split(',').map((t) => t.trim().replace(/^"|"$/g, '')).filter(Boolean);
+  }
+  return [];
+};
+
+export const parseResources = (raw) => {
+  if (typeof raw === 'string') {
+    try {
+      return JSON.parse(raw);
+    } catch {}
+  }
+  return raw && typeof raw === 'object' ? raw : { files: [] };
+};
+
+const getLocalCustomEntries = () => {
+  try {
+    const raw = localStorage.getItem('knowpass_custom_entries');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveLocalCustomEntry = (entry) => {
+  try {
+    const list = getLocalCustomEntries();
+    const updated = [entry, ...list.filter((it) => it.id !== entry.id)];
+    localStorage.setItem('knowpass_custom_entries', JSON.stringify(updated));
+  } catch (e) {
+    console.warn('Error caching custom entry:', e);
+  }
+};
+
 export const knowledgeService = {
   getAll: async (params = {}) => {
     const upvotesCache = getLocalUpvotes();
+    const localCustom = getLocalCustomEntries();
 
     // 1. If Supabase is configured, fetch live rows from PostgreSQL
     if (isSupabaseConfigured && supabase) {
@@ -546,35 +590,50 @@ export const knowledgeService = {
         }
 
         const { data, error } = await query;
-        if (!error && data && data.length > 0) {
+        if (!error && data) {
+          const mapped = data.map((d) => {
+            const effectiveUpvotes = upvotesCache[d.id] !== undefined ? Math.max(d.upvotes || 0, upvotesCache[d.id]) : (d.upvotes || 0);
+            return {
+              id: d.id,
+              title: d.title || 'Untitled Knowledge Entry',
+              category: d.category || d.knowledge_type || 'Project Experience',
+              knowledgeType: d.knowledge_type || d.category || 'Project Experience',
+              department: d.department || 'Computer Science & Engineering (CSE)',
+              yearOfStudy: d.year_of_study || 'All Levels',
+              rating: Number(d.rating) || 5.0,
+              author: d.author_name || 'Campus Scholar',
+              authorRole: d.author_role || 'STUDENT',
+              authorAvatar: d.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+              createdAt: d.created_at || new Date().toISOString(),
+              views: d.views || 1,
+              upvotes: effectiveUpvotes,
+              isTrending: effectiveUpvotes > 100,
+              isVerified: Boolean(d.is_verified),
+              verifiedBy: d.verified_by,
+              tags: ensureArrayTags(d.tags),
+              summary: d.summary || '',
+              content: d.content || '',
+              resources: parseResources(d.resources),
+              comments: getLocalComments(d.id),
+            };
+          });
+
+          // Merge any local custom entries that haven't synced yet
+          localCustom.forEach((lc) => {
+            if (!mapped.some((it) => it.id === lc.id || (it.title && it.title.trim() === lc.title?.trim()))) {
+              mapped.unshift({
+                ...lc,
+                tags: ensureArrayTags(lc.tags),
+                resources: parseResources(lc.resources),
+                upvotes: upvotesCache[lc.id] !== undefined ? Math.max(lc.upvotes || 0, upvotesCache[lc.id]) : (lc.upvotes || 0),
+                comments: [...(lc.comments || []), ...getLocalComments(lc.id)],
+              });
+            }
+          });
+
           return {
-            items: data.map((d) => {
-              const effectiveUpvotes = upvotesCache[d.id] !== undefined ? Math.max(d.upvotes || 0, upvotesCache[d.id]) : (d.upvotes || 0);
-              return {
-                id: d.id,
-                title: d.title,
-                category: d.category,
-                knowledgeType: d.knowledge_type,
-                department: d.department,
-                yearOfStudy: d.year_of_study,
-                rating: Number(d.rating) || 5.0,
-                author: d.author_name,
-                authorRole: d.author_role,
-                authorAvatar: d.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-                createdAt: d.created_at,
-                views: d.views || 1,
-                upvotes: effectiveUpvotes,
-                isTrending: effectiveUpvotes > 100,
-                isVerified: d.is_verified || false,
-                verifiedBy: d.verified_by,
-                tags: d.tags || [],
-                summary: d.summary,
-                content: d.content,
-                resources: d.resources || { files: [] },
-                comments: getLocalComments(d.id),
-              };
-            }),
-            total: data.length,
+            items: mapped,
+            total: mapped.length,
           };
         }
       } catch (err) {
@@ -582,14 +641,24 @@ export const knowledgeService = {
       }
     }
 
-    // 2. Standard in-memory fallback
+    // 2. Standard in-memory fallback + Local Storage Cache
     try {
       const response = await api.get('/knowledge', { params });
       return response.data;
     } catch {
-      let filtered = SAMPLE_KNOWLEDGE_ITEMS.map((item) => ({
+      // Merge localCustom into fallback
+      const combined = [...localCustom];
+      SAMPLE_KNOWLEDGE_ITEMS.forEach((it) => {
+        if (!combined.some((c) => c.id === it.id)) {
+          combined.push(it);
+        }
+      });
+
+      let filtered = combined.map((item) => ({
         ...item,
-        upvotes: upvotesCache[item.id] !== undefined ? Math.max(item.upvotes, upvotesCache[item.id]) : item.upvotes,
+        tags: ensureArrayTags(item.tags),
+        resources: parseResources(item.resources),
+        upvotes: upvotesCache[item.id] !== undefined ? Math.max(item.upvotes || 0, upvotesCache[item.id]) : (item.upvotes || 0),
         comments: [...(item.comments || []), ...getLocalComments(item.id)],
       }));
       
@@ -600,23 +669,23 @@ export const knowledgeService = {
       }
       if (params.department && params.department !== 'All') {
         filtered = filtered.filter((item) =>
-          item.department.toLowerCase().includes(params.department.toLowerCase())
+          (item.department || '').toLowerCase().includes(params.department.toLowerCase())
         );
       }
       if (params.year && params.year !== 'All') {
-        filtered = filtered.filter((item) => item.yearOfStudy === params.year);
+        filtered = filtered.filter((item) => (item.yearOfStudy || 'All Levels') === params.year);
       }
       if (params.minRating) {
-        filtered = filtered.filter((item) => item.rating >= params.minRating);
+        filtered = filtered.filter((item) => (Number(item.rating) || 5.0) >= params.minRating);
       }
       if (params.search) {
         const q = params.search.toLowerCase();
         filtered = filtered.filter(
           (item) =>
-            item.title.toLowerCase().includes(q) ||
-            item.summary.toLowerCase().includes(q) ||
-            item.author.toLowerCase().includes(q) ||
-            item.tags.some((t) => t.toLowerCase().includes(q))
+            (item.title || '').toLowerCase().includes(q) ||
+            (item.summary || '').toLowerCase().includes(q) ||
+            (item.author || '').toLowerCase().includes(q) ||
+            ensureArrayTags(item.tags).some((t) => typeof t === 'string' && t.toLowerCase().includes(q))
         );
       }
       return { items: filtered, total: filtered.length };
@@ -675,6 +744,9 @@ export const knowledgeService = {
   create: async (data) => {
     let finalItem = null;
 
+    const safeTags = ensureArrayTags(data.tags);
+    const safeResources = parseResources(data.resources);
+
     if (isSupabaseConfigured && supabase) {
       try {
         const payload = {
@@ -685,10 +757,11 @@ export const knowledgeService = {
           year_of_study: data.yearOfStudy || 'All Levels',
           author_name: data.author || 'Campus Scholar',
           author_role: data.authorRole || 'STUDENT',
+          author_avatar: data.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
           summary: data.summary || '',
           content: data.content || '',
-          tags: data.tags || [],
-          resources: data.resources || { files: [] },
+          tags: safeTags,
+          resources: safeResources,
           status: 'APPROVED',
         };
 
@@ -698,23 +771,23 @@ export const knowledgeService = {
           finalItem = {
             id: inserted.id,
             title: inserted.title,
-            category: inserted.category,
-            knowledgeType: inserted.knowledge_type,
+            category: inserted.category || inserted.knowledge_type,
+            knowledgeType: inserted.knowledge_type || inserted.category,
             department: inserted.department,
-            yearOfStudy: inserted.year_of_study,
+            yearOfStudy: inserted.year_of_study || 'All Levels',
             rating: 5.0,
             author: inserted.author_name,
             authorRole: inserted.author_role,
-            authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-            createdAt: inserted.created_at,
+            authorAvatar: inserted.author_avatar || data.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+            createdAt: inserted.created_at || new Date().toISOString(),
             views: 1,
             upvotes: 0,
             isTrending: false,
             isVerified: true,
-            tags: inserted.tags,
-            summary: inserted.summary,
-            content: inserted.content,
-            resources: inserted.resources,
+            tags: ensureArrayTags(inserted.tags),
+            summary: inserted.summary || '',
+            content: inserted.content || '',
+            resources: parseResources(inserted.resources),
             comments: [],
           };
         }
@@ -731,6 +804,10 @@ export const knowledgeService = {
         finalItem = {
           id: `kb_${Date.now()}`,
           ...data,
+          category: data.category || data.knowledgeType || 'Project Experience',
+          knowledgeType: data.knowledgeType || data.category || 'Project Experience',
+          yearOfStudy: data.yearOfStudy || 'All Levels',
+          authorAvatar: data.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
           createdAt: new Date().toISOString(),
           views: 1,
           upvotes: 0,
@@ -738,10 +815,17 @@ export const knowledgeService = {
           isTrending: false,
           isVerified: true,
           status: 'APPROVED',
+          tags: safeTags,
+          resources: safeResources,
           comments: []
         };
         SAMPLE_KNOWLEDGE_ITEMS.unshift(finalItem);
       }
+    }
+
+    // Always persist to local cache so user immediately sees it upon redirect or refresh
+    if (finalItem) {
+      saveLocalCustomEntry(finalItem);
     }
 
     // 🧠 Instant AI Vector Learning: Dynamically embed document in KnowBot AI engine
