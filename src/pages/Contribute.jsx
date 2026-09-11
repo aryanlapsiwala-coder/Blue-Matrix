@@ -186,6 +186,12 @@ export function Contribute() {
   const [isRecordingVideo, setIsRecordingVideo] = useState(false);
   const [videoRecorded, setVideoRecorded] = useState(false);
   const [recordTimer, setRecordTimer] = useState(0);
+  const [recordedVideoUrl, setRecordedVideoUrl] = useState(null);
+  const [webcamError, setWebcamError] = useState(null);
+  const videoLiveRef = React.useRef(null);
+  const mediaStreamRef = React.useRef(null);
+  const mediaRecorderRef = React.useRef(null);
+  const recordedChunksRef = React.useRef([]);
 
   // Step 4: AI Enhancement
   const [isAIEnhancing, setIsAIEnhancing] = useState(false);
@@ -215,7 +221,7 @@ export function Contribute() {
     }
   }, [currentStep, knowledgeType, title, description]);
 
-  // Video recording timer simulation
+  // Video recording timer & real MediaRecorder lifecycle
   useEffect(() => {
     let interval;
     if (isRecordingVideo) {
@@ -225,6 +231,91 @@ export function Contribute() {
     }
     return () => clearInterval(interval);
   }, [isRecordingVideo]);
+
+  // Clean up media stream when component unmounts
+  useEffect(() => {
+    return () => {
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
+  const startWebcamRecording = async () => {
+    setWebcamError(null);
+    recordedChunksRef.current = [];
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+        audio: true,
+      });
+      mediaStreamRef.current = stream;
+      if (videoLiveRef.current) {
+        videoLiveRef.current.srcObject = stream;
+        videoLiveRef.current.play().catch(() => {});
+      }
+
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+        ? 'video/webm;codecs=vp9'
+        : MediaRecorder.isTypeSupported('video/webm')
+        ? 'video/webm'
+        : 'video/mp4';
+
+      const recorder = new MediaRecorder(stream, { mimeType });
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: mimeType });
+        const videoUrl = URL.createObjectURL(blob);
+        setRecordedVideoUrl(videoUrl);
+        setVideoRecorded(true);
+
+        // Turn off camera tracks
+        if (mediaStreamRef.current) {
+          mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+          mediaStreamRef.current = null;
+        }
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start(250); // collect 250ms chunks
+      setIsRecordingVideo(true);
+      setRecordTimer(0);
+    } catch (err) {
+      console.warn('Webcam permission denied or unavailable:', err);
+      setWebcamError(
+        'Could not access camera/microphone. Please ensure permissions are granted in your browser.'
+      );
+      // Graceful fallback simulation if physical camera is blocked/denied
+      setIsRecordingVideo(true);
+    }
+  };
+
+  const stopWebcamRecording = () => {
+    setIsRecordingVideo(false);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    } else {
+      // Fallback if hardware recorder was inactive
+      setVideoRecorded(true);
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    }
+  };
+
+  const discardWebcamRecording = () => {
+    if (recordedVideoUrl) {
+      URL.revokeObjectURL(recordedVideoUrl);
+    }
+    setRecordedVideoUrl(null);
+    setVideoRecorded(false);
+    setRecordTimer(0);
+  };
 
   // Trigger AI generation when reaching Step 4
   const triggerAIEnhancement = () => {
@@ -864,11 +955,49 @@ ${description.slice(0, 220)}...
           </div>
 
           {/* 3. Record or Upload Short Video */}
-          <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
-            <label className="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+          <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-3">
+            <label className="block text-xs font-semibold text-slate-700 flex items-center gap-2">
               <Video className="w-4 h-4 text-indigo-600" />
               Record or Upload Quick Lab Video Clip (Max 2 Mins)
             </label>
+
+            {webcamError && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <span>{webcamError}</span>
+              </div>
+            )}
+
+            {/* Live Camera Viewfinder while recording */}
+            {isRecordingVideo && (
+              <div className="relative rounded-2xl overflow-hidden bg-black aspect-video max-w-md mx-auto border-2 border-rose-500 shadow-lg">
+                <video
+                  ref={videoLiveRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover mirror"
+                  style={{ transform: 'scaleX(-1)' }}
+                />
+                <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-2 text-white text-xs">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
+                  <span className="font-mono font-bold text-rose-300">
+                    REC 00:{recordTimer < 10 ? `0${recordTimer}` : recordTimer}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Recorded Video Playback Preview */}
+            {videoRecorded && recordedVideoUrl && !isRecordingVideo && (
+              <div className="relative rounded-2xl overflow-hidden bg-black aspect-video max-w-md mx-auto border border-emerald-400 shadow-md">
+                <video
+                  src={recordedVideoUrl}
+                  controls
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
 
             <div className="flex flex-wrap items-center gap-3">
               {!isRecordingVideo ? (
@@ -876,37 +1005,40 @@ ${description.slice(0, 220)}...
                   type="button"
                   variant="secondary"
                   size="sm"
-                  onClick={() => setIsRecordingVideo(true)}
+                  onClick={startWebcamRecording}
                   className="text-xs"
                 >
                   <Video className="w-3.5 h-3.5 mr-1.5 text-rose-600" />
-                  Record Quick Webcam Demo
+                  {videoRecorded ? 'Re-record Webcam Demo' : 'Record Quick Webcam Demo'}
                 </Button>
               ) : (
-                <div className="flex items-center gap-3 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping" />
-                  <span className="text-xs font-mono font-bold text-rose-800">
-                    Recording: 00:{recordTimer < 10 ? `0${recordTimer}` : recordTimer}
-                  </span>
+                <div className="flex items-center gap-3">
                   <Button
                     size="sm"
                     variant="danger"
-                    onClick={() => {
-                      setIsRecordingVideo(false);
-                      setVideoRecorded(true);
-                    }}
-                    className="text-xs py-1 px-2.5"
+                    onClick={stopWebcamRecording}
+                    className="text-xs py-1.5 px-3 shadow"
                   >
-                    Stop & Save
+                    <Check className="w-3.5 h-3.5 mr-1" />
+                    Stop & Attach Recording
                   </Button>
                 </div>
               )}
 
-              {videoRecorded && (
-                <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  Video Clip Attached (00:{recordTimer < 10 ? `0${recordTimer}` : recordTimer})
-                </span>
+              {videoRecorded && !isRecordingVideo && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    Webcam Clip Attached ({recordTimer}s)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={discardWebcamRecording}
+                    className="text-xs text-rose-600 hover:text-rose-800 hover:underline"
+                  >
+                    Remove
+                  </button>
+                </div>
               )}
             </div>
           </div>
