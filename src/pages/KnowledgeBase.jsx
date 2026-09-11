@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Card, CardHeader } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { knowledgeService, SAMPLE_KNOWLEDGE_ITEMS } from '../services/knowledgeService';
+import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { ROLES, ROLE_CONFIG } from '../constants/roles';
 import { formatDate } from '../utils/formatters';
 import { DotPattern } from '../components/ui/dot-pattern';

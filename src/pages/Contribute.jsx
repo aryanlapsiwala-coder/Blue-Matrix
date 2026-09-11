@@ -354,8 +354,8 @@ ${description.slice(0, 220)}...
         // ignore
       }
       setTimeout(() => {
-        navigate(ROUTES.KNOWLEDGE_BASE);
-      }, 1600);
+        window.location.assign(ROUTES.KNOWLEDGE_BASE);
+      }, 1500);
     } catch {
       alert('Error submitting knowledge resource. Please try again.');
     } finally {
@@ -470,7 +470,7 @@ ${description.slice(0, 220)}...
 
           <div className="pt-3 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Button
-              onClick={() => navigate(ROUTES.KNOWLEDGE_BASE)}
+              onClick={() => window.location.assign(ROUTES.KNOWLEDGE_BASE)}
               className="text-xs px-6 py-2.5 shadow-md shadow-indigo-600/20"
             >
               Go to Knowledge Base Now
