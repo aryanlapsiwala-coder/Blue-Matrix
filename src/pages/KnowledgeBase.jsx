@@ -1440,11 +1440,17 @@ export function KnowledgeBase() {
                     <ShieldCheck className="w-5 h-5 text-emerald-400" />
                     <div>
                       <h4 className="text-xs font-bold text-white">Tri-Tier Academic Trust & Verification Pipeline</h4>
-                      <p className="text-[10px] text-slate-300">Automated AI scan ➔ Senior peer consensus ➔ Faculty certification</p>
+                      <p className="text-[10px] text-slate-300">
+                        1. AI Integrity on Publish ➔ 2. Live Peer Upvotes & Issue Checks ➔ 3. 1-Click Faculty Endorsement
+                      </p>
                     </div>
                   </div>
                   <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full self-start sm:self-auto">
-                    {activeItem.isVerified ? 'Tier 3 Certified' : (activeItem.upvotes || 0) >= 5 ? 'Tier 2 Peer Approved' : 'Tier 1 AI Verified'}
+                    {activeItem.isVerified
+                      ? 'Tier 3: Faculty Certified'
+                      : (activeItem.upvotes || 0) >= 5
+                      ? 'Tier 2: Peer Vetted'
+                      : 'Tier 1: Live Peer-Review Draft'}
                   </span>
                 </div>
 
@@ -1453,10 +1459,10 @@ export function KnowledgeBase() {
                   <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 flex flex-col justify-between">
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold text-slate-200 text-[11px]">🤖 Tier 1: AI Integrity</span>
-                        <span className="text-[9px] font-bold text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded">✓ Passed</span>
+                        <span className="font-bold text-slate-200 text-[11px]">🤖 Tier 1: AI Screening</span>
+                        <span className="text-[9px] font-bold text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded">✓ Published Live</span>
                       </div>
-                      <p className="text-[10px] text-slate-300">96/100 Quality Score • 0% Campus Redundancy</p>
+                      <p className="text-[10px] text-slate-300">Passed automated syntax, format & anti-plagiarism scan on upload</p>
                     </div>
                   </div>
 
@@ -1464,19 +1470,19 @@ export function KnowledgeBase() {
                   <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 flex flex-col justify-between">
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold text-slate-200 text-[11px]">👥 Tier 2: Peer Review</span>
+                        <span className="font-bold text-slate-200 text-[11px]">👥 Tier 2: Peer Validation</span>
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
                           (activeItem.upvotes || 0) >= 5
                             ? 'text-emerald-400 bg-emerald-400/10'
                             : 'text-amber-300 bg-amber-400/10'
                         }`}>
-                          {(activeItem.upvotes || 0) >= 5 ? '✓ Approved' : `${activeItem.upvotes || 0}/5 Votes`}
+                          {(activeItem.upvotes || 0) >= 5 ? '✓ 5+ Consensus' : `${activeItem.upvotes || 0}/5 Upvotes`}
                         </span>
                       </div>
                       <p className="text-[10px] text-slate-300">
                         {(activeItem.upvotes || 0) >= 5
-                          ? `${activeItem.upvotes} Senior Community Endorsements`
-                          : 'Awaiting senior peer review threshold'}
+                          ? `Verified reproducible by ${activeItem.upvotes} campus peers`
+                          : 'Live for students to read, test in labs & upvote'}
                       </p>
                     </div>
                   </div>
@@ -1491,13 +1497,13 @@ export function KnowledgeBase() {
                             ? 'text-emerald-400 bg-emerald-400/10'
                             : 'text-slate-400 bg-white/10'
                         }`}>
-                          {activeItem.isVerified ? '✓ Endorsed' : 'In Queue'}
+                          {activeItem.isVerified ? '✓ Certified' : 'Pending Faculty Review'}
                         </span>
                       </div>
                       <p className="text-[10px] text-slate-300">
                         {activeItem.isVerified
-                          ? `Endorsed by ${activeItem.verifiedBy || 'Prof. Sarah Jenkins (HOD)'}`
-                          : 'Pending faculty milestone review'}
+                          ? `Officially certified by ${activeItem.verifiedBy || 'Prof. Sarah Jenkins (HOD)'}`
+                          : 'Professors grant 1-click institutional seal once peer tested'}
                       </p>
                     </div>
                   </div>
