@@ -183,9 +183,7 @@ export function Contribute() {
   // Step 3: Media & Resources
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [youtubeUrl, setYoutubeUrl] = useState('');
-  const [isRecordingVideo, setIsRecordingVideo] = useState(false);
-  const [videoRecorded, setVideoRecorded] = useState(false);
-  const [recordTimer, setRecordTimer] = useState(0);
+  const [githubRepoUrl, setGithubRepoUrl] = useState('');
 
   // Step 4: AI Enhancement
   const [isAIEnhancing, setIsAIEnhancing] = useState(false);
@@ -330,7 +328,7 @@ ${description.slice(0, 220)}...
         resources: {
           files: uploadedFiles,
           youtube: youtubeUrl ? youtubeUrl : null,
-          videoRecorded: videoRecorded,
+          github: githubRepoUrl ? githubRepoUrl : null,
         },
         aiEnhanced: useAIVersion,
       };
@@ -863,52 +861,22 @@ ${description.slice(0, 220)}...
             )}
           </div>
 
-          {/* 3. Record or Upload Short Video */}
-          <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
-            <label className="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
-              <Video className="w-4 h-4 text-indigo-600" />
-              Record or Upload Quick Lab Video Clip (Max 2 Mins)
+          {/* 3. GitHub or Source Code Repository Link */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-2">
+              <Paperclip className="w-4 h-4 text-indigo-600" />
+              Source Code / GitHub Repository URL (Optional)
             </label>
-
-            <div className="flex flex-wrap items-center gap-3">
-              {!isRecordingVideo ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setIsRecordingVideo(true)}
-                  className="text-xs"
-                >
-                  <Video className="w-3.5 h-3.5 mr-1.5 text-rose-600" />
-                  Record Quick Webcam Demo
-                </Button>
-              ) : (
-                <div className="flex items-center gap-3 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping" />
-                  <span className="text-xs font-mono font-bold text-rose-800">
-                    Recording: 00:{recordTimer < 10 ? `0${recordTimer}` : recordTimer}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => {
-                      setIsRecordingVideo(false);
-                      setVideoRecorded(true);
-                    }}
-                    className="text-xs py-1 px-2.5"
-                  >
-                    Stop & Save
-                  </Button>
-                </div>
-              )}
-
-              {videoRecorded && (
-                <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  Video Clip Attached (00:{recordTimer < 10 ? `0${recordTimer}` : recordTimer})
-                </span>
-              )}
-            </div>
+            <input
+              type="url"
+              value={githubRepoUrl}
+              onChange={(e) => setGithubRepoUrl(e.target.value)}
+              placeholder="https://github.com/campus-lab/project-core"
+              className="w-full text-xs sm:text-sm px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition"
+            />
+            <p className="text-[11px] text-slate-400 mt-1">
+              Link live GitHub repositories, Verilog modules, or Jupyter notebooks so juniors can clone and reproduce your work.
+            </p>
           </div>
         </Card>
       )}
@@ -1080,7 +1048,7 @@ ${description.slice(0, 220)}...
               <div className="p-3 bg-white rounded-xl border border-slate-200">
                 <p className="font-bold text-slate-700 mb-1">Video / Media:</p>
                 <p className="text-slate-500">
-                  {youtubeUrl ? 'YouTube link attached' : videoRecorded ? 'Webcam video attached' : 'None'}
+                  {youtubeUrl ? 'YouTube link attached' : githubRepoUrl ? 'GitHub Repo attached' : 'None'}
                 </p>
               </div>
             </div>
