@@ -1440,7 +1440,7 @@ export function KnowledgeBase() {
                     <ShieldCheck className="w-5 h-5 text-emerald-400" />
                     <div>
                       <h4 className="text-xs font-bold text-white">Tri-Tier Academic Trust & Verification Pipeline</h4>
-                      <p className="text-[10px] text-slate-300">Instant AI Integrity on publish ➔ Peer upvotes & bug checks ➔ Faculty 1-click institutional seal</p>
+                      <p className="text-[10px] text-slate-300">Automated AI scan ➔ Senior peer consensus ➔ Faculty certification</p>
                     </div>
                   </div>
                   <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full self-start sm:self-auto">

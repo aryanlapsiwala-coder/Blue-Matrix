@@ -16,5 +16,8 @@ export default defineConfig({
     strictPort: false,
     host: true,
     open: true,
+    watch: {
+      ignored: ['**/*.pdf', '**/*.docx', '**/*.pptx'],
+    },
   }
 })
