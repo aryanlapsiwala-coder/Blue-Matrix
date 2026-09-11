@@ -36,6 +36,11 @@ import {
   HelpCircle,
   GraduationCap,
   ThumbsUp,
+  Trash2,
+  Copy,
+  Download,
+  Plus,
+  Minus,
 } from 'lucide-react';
 
 // ==========================================
@@ -278,11 +283,35 @@ export function Placements() {
   // Active Tab: 'insights' | 'skills' | 'alumni'
   const [activeTab, setActiveTab] = useState('insights');
 
-  // State for Company Insights
-  const [companyInsights, setCompanyInsights] = useState(INITIAL_COMPANY_INSIGHTS);
+  // State for Company Insights with persistent custom storage
+  const [companyInsights, setCompanyInsights] = useState(() => {
+    try {
+      const saved = localStorage.getItem('knowpass_placement_insights_custom');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const existing = new Set(parsed.map((i) => i.id));
+          const benchmarks = INITIAL_COMPANY_INSIGHTS.filter((b) => !existing.has(b.id));
+          return [...parsed, ...benchmarks];
+        }
+      }
+    } catch {}
+    return INITIAL_COMPANY_INSIGHTS;
+  });
+
   const [companySearch, setCompanySearch] = useState('');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState('All');
   const [selectedPlaybookModal, setSelectedPlaybookModal] = useState(null);
+  const [copiedQuestions, setCopiedQuestions] = useState(false);
+
+  // Upvoted / Liked playbooks
+  const [likedInsights, setLikedInsights] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`knowpass_liked_insights_${user?.email || 'guest'}`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
 
   // State for Skill Gap Report & Voting
   const [skillGapDepartmentFilter, setSkillGapDepartmentFilter] = useState('All');
@@ -394,15 +423,143 @@ export function Placements() {
   const [shareCompany, setShareCompany] = useState('');
   const [shareRole, setShareRole] = useState('Software Development Engineer (SDE-1)');
   const [shareCTC, setShareCTC] = useState('');
-  const [shareBatch, setShareBatch] = useState('2026 Placed');
-  const [shareRounds, setShareRounds] = useState('4');
+  const [shareDept, setShareDept] = useState('Computer Science & Engineering (CSE)');
+  const [shareBatch, setShareBatch] = useState('2026 Batch');
+  const [shareDifficulty, setShareDifficulty] = useState('Medium');
+  const [shareOfferStatus, setShareOfferStatus] = useState('Offer Accepted & Placed');
+  const [customRounds, setCustomRounds] = useState([
+    { name: 'Round 1: Online Assessment / Screening', desc: '2 LeetCode Medium/Hard DP and Tree recursion problems (90 mins).' },
+    { name: 'Round 2: Data Structures & Algorithms', desc: 'Live coding on Trie prefix matching and sliding window string compression.' },
+    { name: 'Round 3: Low-Level / System Architecture', desc: 'Thread-safe parking lot or distributed rate limiter design.' },
+    { name: 'Round 4: Managerial & Cultural Fit', desc: 'STAR format behavioral stories, conflict resolution, and leadership examples.' },
+  ]);
   const [shareQuestions, setShareQuestions] = useState('');
   const [shareTips, setShareTips] = useState('');
   const [shareSuccessToast, setShareSuccessToast] = useState(false);
 
+  const handleAddRound = () => {
+    setCustomRounds((prev) => [
+      ...prev,
+      { name: `Round ${prev.length + 1}: Technical / Domain Assessment`, desc: '' },
+    ]);
+  };
+
+  const handleRemoveRound = (index) => {
+    setCustomRounds((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleRoundChange = (index, field, value) => {
+    setCustomRounds((prev) =>
+      prev.map((r, i) => (i === index ? { ...r, [field]: value } : r))
+    );
+  };
+
+  const handleToggleLike = (insightId) => {
+    const isLiked = likedInsights.includes(insightId);
+    const updatedLiked = isLiked
+      ? likedInsights.filter((id) => id !== insightId)
+      : [...likedInsights, insightId];
+    setLikedInsights(updatedLiked);
+    localStorage.setItem(`knowpass_liked_insights_${user?.email || 'guest'}`, JSON.stringify(updatedLiked));
+
+    setCompanyInsights((prev) => {
+      const updated = prev.map((item) => {
+        if (item.id === insightId) {
+          return { ...item, likes: Math.max(0, (item.likes || 0) + (isLiked ? -1 : 1)) };
+        }
+        return item;
+      });
+      try {
+        const customSaved = localStorage.getItem('knowpass_placement_insights_custom');
+        if (customSaved) {
+          const customParsed = JSON.parse(customSaved);
+          const updatedCustom = customParsed.map((it) => {
+            if (it.id === insightId) {
+              return { ...it, likes: Math.max(0, (it.likes || 0) + (isLiked ? -1 : 1)) };
+            }
+            return it;
+          });
+          localStorage.setItem('knowpass_placement_insights_custom', JSON.stringify(updatedCustom));
+        }
+      } catch {}
+      return updated;
+    });
+  };
+
+  const handleDeleteInsight = (insightId, e) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm('Are you sure you want to remove this interview playbook?')) return;
+
+    setCompanyInsights((prev) => {
+      const updated = prev.filter((i) => i.id !== insightId);
+      try {
+        const customSaved = localStorage.getItem('knowpass_placement_insights_custom');
+        if (customSaved) {
+          const customParsed = JSON.parse(customSaved);
+          const updatedCustom = customParsed.filter((it) => it.id !== insightId);
+          localStorage.setItem('knowpass_placement_insights_custom', JSON.stringify(updatedCustom));
+        }
+      } catch {}
+      return updated;
+    });
+  };
+
+  const handleCopyQuestions = (questions) => {
+    if (!questions || !questions.length) return;
+    navigator.clipboard.writeText(questions.join('\n'));
+    setCopiedQuestions(true);
+    setTimeout(() => setCopiedQuestions(false), 2000);
+  };
+
+  const handleDownloadPlaybook = (playbook) => {
+    if (!playbook) return;
+    const content = `# 💼 ${playbook.company} Interview Playbook
+**Role:** ${playbook.role}
+**Department:** ${playbook.department || 'N/A'}
+**Batch / Year:** ${playbook.batchYear}
+**Author:** ${playbook.author}
+**Verified CTC / Package:** ${playbook.ctcRange}
+**Difficulty:** ${playbook.difficulty || 'Medium'}
+**Status:** ${playbook.offerStatus || 'Verified'}
+
+---
+
+## 🎯 Interview Rounds Breakdown (${playbook.rounds?.length || 0} Rounds)
+${playbook.rounds?.map((r, i) => `### ${r.name}\n${r.desc}`).join('\n\n') || 'N/A'}
+
+---
+
+## ❓ Questions Asked in Interview
+${playbook.questionsAsked?.map((q, i) => `${i + 1}. ${q}`).join('\n') || 'N/A'}
+
+---
+
+## 💡 Preparation Advice & High-Yield Tips
+${playbook.topTips || 'N/A'}
+
+---
+*Generated via KnowPass Global Placement Intelligence Hub*
+`;
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${playbook.company.replace(/\s+/g, '_')}_Interview_Playbook.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   // Live Supabase query for placement insights
   useEffect(() => {
     const fetchLivePlacementInsights = async () => {
+      let customLocals = [];
+      try {
+        const saved = localStorage.getItem('knowpass_placement_insights_custom');
+        if (saved) customLocals = JSON.parse(saved);
+      } catch {}
+
       if (isSupabaseConfigured && supabase) {
         try {
           const { data, error } = await supabase
@@ -417,14 +574,15 @@ export function Placements() {
               logo: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=100',
               color: 'border-indigo-200 bg-indigo-50/40 text-indigo-700',
               role: d.role,
-              department: 'Computer Science & Engineering',
+              department: d.department || 'Computer Science & Engineering',
               batchYear: d.batch || '2026 Batch',
               author: d.author_name || 'Placed Senior',
+              authorEmail: d.author_email || '',
               authorRole: 'STUDENT',
               ctcRange: d.ctc || '₹18 - ₹32 LPA',
               roundsCount: Array.isArray(d.rounds) ? d.rounds.length : 4,
               rounds: Array.isArray(d.rounds)
-                ? d.rounds.map((r, i) => ({ name: `Round ${i + 1}: ${r.roundName || 'Technical'}`, desc: r.details || 'Interview assessment' }))
+                ? d.rounds.map((r, i) => ({ name: r.name || `Round ${i + 1}: ${r.roundName || 'Technical'}`, desc: r.desc || r.details || 'Interview assessment' }))
                 : [
                     { name: 'Round 1: Screening & Coding Test', desc: 'Online coding and domain fundamentals.' },
                     { name: 'Round 2: Technical Interview', desc: 'Data Structures and Algorithms.' },
@@ -435,14 +593,27 @@ export function Placements() {
               likes: 12,
             }));
 
-            // Merge with benchmarks without duplicate company names
-            const existing = new Set(dbInsights.map((i) => i.company.toLowerCase()));
-            const benchmarks = INITIAL_COMPANY_INSIGHTS.filter((b) => !existing.has(b.company.toLowerCase()));
-            setCompanyInsights([...dbInsights, ...benchmarks]);
+            const seenIds = new Set();
+            const combined = [];
+            for (const item of [...customLocals, ...dbInsights, ...INITIAL_COMPANY_INSIGHTS]) {
+              const key = item.id || `${item.company}_${item.role}`;
+              if (!seenIds.has(key)) {
+                seenIds.add(key);
+                combined.push(item);
+              }
+            }
+            setCompanyInsights(combined);
+            return;
           }
         } catch (err) {
           console.warn('Placement live sync error:', err);
         }
+      }
+
+      if (customLocals.length > 0) {
+        const existingIds = new Set(customLocals.map((c) => c.id));
+        const benchmarks = INITIAL_COMPANY_INSIGHTS.filter((b) => !existingIds.has(b.id));
+        setCompanyInsights([...customLocals, ...benchmarks]);
       }
     };
 
@@ -521,46 +692,72 @@ export function Placements() {
   // Handle Share Placement Experience Form Submit
   const handleSharePlacementSubmit = async (e) => {
     e.preventDefault();
-    if (!shareCompany || !shareCTC || !shareTips) return;
+    if (!shareCompany.trim() || !shareCTC.trim() || !shareTips.trim()) return;
+
+    const filteredRounds = customRounds.filter((r) => r.name.trim().length > 0);
+    const roundsToUse =
+      filteredRounds.length > 0
+        ? filteredRounds
+        : [
+            { name: 'Round 1: Online Assessment / Screening', desc: 'Coding test on DSA and fundamental problem solving.' },
+            { name: 'Round 2: Technical Interview (DSA & Core)', desc: 'Live coding on data structures, algorithms, and complexity analysis.' },
+            { name: 'Round 3: Low-Level / System Architecture', desc: 'Low-level / high-level architecture and edge cases.' },
+            { name: 'Round 4: Managerial & Behavioral', desc: 'Cultural fit, team collaboration, and past project retro.' },
+          ];
+
+    const questionsList = shareQuestions
+      .split('\n')
+      .map((q) => q.trim())
+      .filter((q) => q.length > 0);
 
     const newInsight = {
       id: `comp_${Date.now()}`,
-      company: shareCompany,
+      company: shareCompany.trim(),
       logo: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=100',
       color: 'border-indigo-200 bg-indigo-50/40 text-indigo-700',
-      role: shareRole,
-      department: user?.department || 'Computer Science & Engineering',
+      role: shareRole.trim(),
+      department: shareDept,
       batchYear: shareBatch,
       author: user?.name || 'Placed Scholar',
+      authorEmail: user?.email || '',
       authorRole: user?.role || 'STUDENT',
-      ctcRange: shareCTC,
-      roundsCount: parseInt(shareRounds) || 4,
-      rounds: [
-        { name: 'Round 1: Screening & Coding Test', desc: 'Online coding and domain fundamentals.' },
-        { name: 'Round 2: Data Structures & Architecture', desc: shareQuestions || 'Core problem solving.' },
-        { name: 'Round 3: Low-Level / High-Level System Design', desc: 'Architecture trade-offs and modularity.' },
-        { name: 'Round 4: Managerial & Behavioral', desc: 'Cultural fit and past project retro.' },
-      ],
-      topTips: shareTips,
-      questionsAsked: shareQuestions.split('\n').filter((q) => q.trim().length > 0),
+      ctcRange: shareCTC.trim(),
+      difficulty: shareDifficulty,
+      offerStatus: shareOfferStatus,
+      roundsCount: roundsToUse.length,
+      rounds: roundsToUse,
+      topTips: shareTips.trim(),
+      questionsAsked: questionsList.length > 0 ? questionsList : ['Design a scalable modular system', 'Solve graph traversal problem with edge cases'],
       views: 1,
       likes: 1,
+      createdAt: new Date().toISOString(),
     };
 
-    // 1. Save to Supabase PostgreSQL placement_insights
+    // 1. Save to local storage for persistence across refreshes
+    try {
+      const saved = localStorage.getItem('knowpass_placement_insights_custom');
+      const existing = saved ? JSON.parse(saved) : [];
+      localStorage.setItem('knowpass_placement_insights_custom', JSON.stringify([newInsight, ...existing]));
+    } catch (err) {
+      console.warn('Failed to save placement insight locally:', err);
+    }
+
+    // 2. Save to Supabase PostgreSQL placement_insights
     if (isSupabaseConfigured && supabase) {
       try {
         await supabase.from('placement_insights').insert([
           {
-            company: shareCompany,
-            role: shareRole,
+            company: shareCompany.trim(),
+            role: shareRole.trim(),
             tier: 'Tier-1 High Priority',
-            ctc: shareCTC,
+            ctc: shareCTC.trim(),
             batch: shareBatch,
             author_name: user?.name || 'Placed Scholar',
-            rounds: newInsight.rounds,
+            author_email: user?.email || '',
+            department: shareDept,
+            rounds: roundsToUse,
             interview_questions: newInsight.questionsAsked,
-            tips: shareTips,
+            tips: shareTips.trim(),
           },
         ]);
         console.log('[Supabase] Saved placement insight to PostgreSQL:', shareCompany);
@@ -569,41 +766,53 @@ export function Placements() {
       }
     }
 
-    // 2. Also index into Knowledge Base with category 'Placement Insight' & KnowBot AI
+    // 3. Index into Knowledge Base with category 'Placement Insight' & KnowBot AI
     try {
       await knowledgeService.create({
-        title: `${shareCompany} Interview Playbook & Questions (${shareRole})`,
+        title: `${shareCompany.trim()} Interview Playbook & Questions (${shareRole.trim()})`,
         category: 'Placement Insight',
         knowledgeType: 'Placement Insight',
-        department: user?.department || 'Computer Science & Engineering (CSE)',
+        department: shareDept,
         author: user?.name || 'Placed Scholar',
         authorRole: user?.role || 'STUDENT',
-        summary: `Comprehensive interview experience for ${shareCompany} (${shareRole}). CTC: ${shareCTC}. Tips: ${shareTips}`,
-        content: `### Company Overview\n**Company:** ${shareCompany}\n**Role:** ${shareRole}\n**CTC Offered:** ${shareCTC}\n\n### Interview Process\n${newInsight.rounds.map((r, i) => `**Round ${i + 1}:** ${r.name} - ${r.desc}`).join('\n\n')}\n\n### Candidate Tips\n${shareTips}\n\n### Sample Questions Asked\n${shareQuestions}`,
-        tags: ['Placement', shareCompany, 'Interview-Experience', 'DSA'],
+        summary: `Comprehensive interview experience for ${shareCompany.trim()} (${shareRole.trim()}). CTC: ${shareCTC.trim()}. Tips: ${shareTips.trim()}`,
+        content: `### Company Overview\n**Company:** ${shareCompany.trim()}\n**Role:** ${shareRole.trim()}\n**CTC Offered:** ${shareCTC.trim()}\n**Department:** ${shareDept}\n**Offer Status:** ${shareOfferStatus}\n**Difficulty:** ${shareDifficulty}\n\n### Interview Process\n${roundsToUse.map((r, i) => `**Round ${i + 1}:** ${r.name}\n${r.desc}`).join('\n\n')}\n\n### Candidate Tips & Advice\n${shareTips.trim()}\n\n### Sample Questions Asked\n${newInsight.questionsAsked.map((q) => `- ${q}`).join('\n')}`,
+        tags: ['Placement', shareCompany.trim(), 'Interview-Experience', shareRole.trim(), 'DSA'],
       });
     } catch (e) {
       console.warn('Error syncing placement insight to knowledge base:', e);
     }
 
+    // 4. Award points with celebration modal
     if (awardPoints) {
-      awardPoints(50, `Shared ${shareCompany} placement experience`);
+      awardPoints(150, `Shared ${shareCompany.trim()} placement playbook`);
     }
+
+    // 5. Dispatch reactive window event for Admin metrics
+    window.dispatchEvent(new CustomEvent('knowpass-document-created', { detail: newInsight }));
 
     pushCampusNotification(user?.email, {
       title: 'Placement Playbook Published 💼',
-      desc: `Your ${shareCompany} interview playbook is live in the knowledge repository!`,
+      desc: `Your ${shareCompany.trim()} interview playbook is live in the knowledge repository! (+150 pts)`,
       type: 'placement',
-      link: `/knowledge-base?search=${encodeURIComponent(shareCompany)}`,
+      link: `/knowledge-base?search=${encodeURIComponent(shareCompany.trim())}`,
     });
 
-    setCompanyInsights([newInsight, ...companyInsights]);
+    setCompanyInsights((prev) => [newInsight, ...prev]);
     setShareModalOpen(false);
     setShareSuccessToast(true);
     setShareCompany('');
     setShareCTC('');
     setShareTips('');
     setShareQuestions('');
+    setShareDifficulty('Medium');
+    setShareOfferStatus('Offer Accepted & Placed');
+    setCustomRounds([
+      { name: 'Round 1: Online Assessment / Screening', desc: '2 LeetCode Medium/Hard DP and Tree recursion problems (90 mins).' },
+      { name: 'Round 2: Data Structures & Algorithms', desc: 'Live coding on Trie prefix matching and sliding window string compression.' },
+      { name: 'Round 3: Low-Level / System Architecture', desc: 'Thread-safe parking lot or distributed rate limiter design.' },
+      { name: 'Round 4: Managerial & Cultural Fit', desc: 'STAR format behavioral stories, conflict resolution, and leadership examples.' },
+    ]);
     setTimeout(() => setShareSuccessToast(false), 4000);
   };
 
@@ -763,82 +972,133 @@ export function Placements() {
 
           {/* Cards Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {filteredCompanyInsights.map((comp) => (
-              <Card
-                key={comp.id}
-                className="p-6 flex flex-col justify-between border border-slate-200/80 hover:shadow-md transition space-y-4"
-              >
-                <div>
-                  {/* Card Header: Company, Batch, CTC */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <CompanyLogo company={comp.company} className="w-12 h-12" size={26} />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-base font-black text-slate-900">{comp.company}</h3>
-                          <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded border border-indigo-100">
-                            {comp.batchYear}
-                          </span>
+            {filteredCompanyInsights.map((comp) => {
+              const canDelete =
+                user &&
+                (comp.author === user?.name ||
+                  comp.authorEmail === user?.email ||
+                  user?.role === 'ADMIN');
+              const isLiked = likedInsights.includes(comp.id);
+
+              return (
+                <Card
+                  key={comp.id}
+                  className="p-6 flex flex-col justify-between border border-slate-200/80 hover:shadow-md transition space-y-4"
+                >
+                  <div>
+                    {/* Card Header: Company, Batch, CTC */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <CompanyLogo company={comp.company} className="w-12 h-12" size={26} />
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-base font-black text-slate-900">{comp.company}</h3>
+                            <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded border border-indigo-100">
+                              {comp.batchYear}
+                            </span>
+                            {comp.difficulty && (
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                  comp.difficulty === 'Easy'
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                    : comp.difficulty === 'Hard'
+                                    ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                    : 'bg-amber-100 text-amber-800 border border-amber-200'
+                                }`}
+                              >
+                                {comp.difficulty}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs font-bold text-slate-700 mt-0.5">{comp.role}</p>
                         </div>
-                        <p className="text-xs font-bold text-slate-700 mt-0.5">{comp.role}</p>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-xl whitespace-nowrap">
+                          💰 {comp.ctcRange.split('(')[0]}
+                        </span>
+                        {canDelete && (
+                          <button
+                            onClick={(e) => handleDeleteInsight(comp.id, e)}
+                            className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition"
+                            title="Delete your interview playbook"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
 
-                    <span className="text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-xl whitespace-nowrap">
-                      💰 {comp.ctcRange.split('(')[0]}
-                    </span>
-                  </div>
+                    {/* Compensation details */}
+                    <div className="mt-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between text-xs text-slate-600">
+                      <span className="font-semibold text-slate-500">Package Breakdown:</span>
+                      <span className="font-bold text-slate-900">{comp.ctcRange}</span>
+                    </div>
 
-                  {/* Compensation details */}
-                  <div className="mt-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between text-xs text-slate-600">
-                    <span className="font-semibold text-slate-500">Package Breakdown:</span>
-                    <span className="font-bold text-slate-900">{comp.ctcRange}</span>
-                  </div>
+                    {/* Rounds Breakdown */}
+                    <div className="mt-3 space-y-1.5">
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        Interview Rounds Breakdown ({comp.roundsCount || comp.rounds?.length || 4} Rounds):
+                      </p>
+                      <div className="space-y-1 text-xs">
+                        {comp.rounds?.slice(0, 2).map((r, idx) => (
+                          <div key={idx} className="p-2 bg-indigo-50/50 border border-indigo-100/70 rounded-xl">
+                            <p className="font-bold text-indigo-950 text-[11px]">{r.name}</p>
+                            <p className="text-[10px] text-indigo-900 line-clamp-1">{r.desc}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
 
-                  {/* Rounds Breakdown */}
-                  <div className="mt-3 space-y-1.5">
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      Interview Rounds Breakdown ({comp.roundsCount} Rounds):
-                    </p>
-                    <div className="space-y-1 text-xs">
-                      {comp.rounds.slice(0, 2).map((r, idx) => (
-                        <div key={idx} className="p-2 bg-indigo-50/50 border border-indigo-100/70 rounded-xl">
-                          <p className="font-bold text-indigo-950 text-[11px]">{r.name}</p>
-                          <p className="text-[10px] text-indigo-900 line-clamp-1">{r.desc}</p>
-                        </div>
-                      ))}
+                    {/* Key Tips */}
+                    <div className="mt-3">
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        Alumni Prep Advice:
+                      </p>
+                      <p className="text-xs text-slate-600 bg-amber-50/50 p-2.5 rounded-xl border border-amber-100 leading-relaxed">
+                        💡 {comp.topTips}
+                      </p>
                     </div>
                   </div>
 
-                  {/* Key Tips */}
-                  <div className="mt-3">
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                      Alumni Prep Advice:
-                    </p>
-                    <p className="text-xs text-slate-600 bg-amber-50/50 p-2.5 rounded-xl border border-amber-100 leading-relaxed">
-                      💡 {comp.topTips}
-                    </p>
-                  </div>
-                </div>
+                  {/* Card Footer: Contributor, Like & Read Playbook */}
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500 truncate">
+                      <GraduationCap className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                      <span className="truncate">Documented by <strong className="text-slate-800">{comp.author}</strong></span>
+                    </div>
 
-                {/* Card Footer: Contributor & Read Playbook */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                    <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Documented by <strong className="text-slate-800">{comp.author}</strong></span>
-                  </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleLike(comp.id);
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition border ${
+                          isLiked
+                            ? 'bg-rose-50 text-rose-600 border-rose-200'
+                            : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200'
+                        }`}
+                        title="Upvote helpful playbook"
+                      >
+                        <ThumbsUp className={`w-3.5 h-3.5 ${isLiked ? 'fill-rose-500 text-rose-500' : ''}`} />
+                        <span>{comp.likes || 0}</span>
+                      </button>
 
-                  <Button
-                    size="sm"
-                    onClick={() => setSelectedPlaybookModal(comp)}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
-                  >
-                    <span>Read Full Playbook</span>
-                    <ChevronRight className="w-3.5 h-3.5 ml-1" />
-                  </Button>
-                </div>
-              </Card>
-            ))}
+                      <Button
+                        size="sm"
+                        onClick={() => setSelectedPlaybookModal(comp)}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
+                      >
+                        <span>Read Full Playbook</span>
+                        <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         </div>
       )}
@@ -1180,9 +1440,29 @@ export function Placements() {
               <div className="flex items-start gap-4">
                 <CompanyLogo company={selectedPlaybookModal.company} className="w-14 h-14" size={30} />
                 <div>
-                  <span className="text-[10px] font-bold bg-indigo-600 text-white px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                    Verified Placement Playbook
-                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-bold bg-indigo-600 text-white px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                      Verified Placement Playbook
+                    </span>
+                    {selectedPlaybookModal.difficulty && (
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          selectedPlaybookModal.difficulty === 'Easy'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : selectedPlaybookModal.difficulty === 'Hard'
+                            ? 'bg-rose-100 text-rose-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        {selectedPlaybookModal.difficulty} Difficulty
+                      </span>
+                    )}
+                    {selectedPlaybookModal.offerStatus && (
+                      <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200">
+                        {selectedPlaybookModal.offerStatus}
+                      </span>
+                    )}
+                  </div>
                   <h3 className="text-xl font-black text-slate-900 mt-2">
                     {selectedPlaybookModal.company} — {selectedPlaybookModal.role}
                   </h3>
@@ -1207,10 +1487,10 @@ export function Placements() {
 
               <div className="space-y-2">
                 <h4 className="font-black text-slate-900 text-xs uppercase tracking-wider text-slate-500">
-                  Detailed Round-by-Round Breakdown:
+                  Detailed Round-by-Round Breakdown ({selectedPlaybookModal.rounds?.length || 0} Rounds):
                 </h4>
                 <div className="space-y-2">
-                  {selectedPlaybookModal.rounds.map((r, idx) => (
+                  {selectedPlaybookModal.rounds?.map((r, idx) => (
                     <div key={idx} className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-1">
                       <p className="font-bold text-indigo-900 text-xs">{r.name}</p>
                       <p className="text-xs text-slate-600 leading-relaxed">{r.desc}</p>
@@ -1219,11 +1499,30 @@ export function Placements() {
                 </div>
               </div>
 
-              {selectedPlaybookModal.questionsAsked && (
+              {selectedPlaybookModal.questionsAsked && selectedPlaybookModal.questionsAsked.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="font-black text-slate-900 text-xs uppercase tracking-wider text-slate-500">
-                    High-Yield Questions Asked in Interview:
-                  </h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-black text-slate-900 text-xs uppercase tracking-wider text-slate-500">
+                      High-Yield Questions Asked in Interview:
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyQuestions(selectedPlaybookModal.questionsAsked)}
+                      className="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 transition"
+                    >
+                      {copiedQuestions ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="text-emerald-600 font-bold">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copy Questions</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                   <ul className="list-disc list-inside space-y-1 font-mono text-xs bg-slate-900 text-slate-100 p-4 rounded-2xl">
                     {selectedPlaybookModal.questionsAsked.map((q, idx) => (
                       <li key={idx}>{q}</li>
@@ -1243,9 +1542,20 @@ export function Placements() {
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 Verified by Campus Placement Cell
               </span>
-              <Button size="sm" onClick={() => setSelectedPlaybookModal(null)}>
-                Close Playbook
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleDownloadPlaybook(selectedPlaybookModal)}
+                  className="gap-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-600" />
+                  <span>Export (.md)</span>
+                </Button>
+                <Button size="sm" onClick={() => setSelectedPlaybookModal(null)}>
+                  Close Playbook
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -1256,109 +1566,239 @@ export function Placements() {
       ======================================================== */}
       {shareModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4">
-            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[88vh] flex flex-col shadow-2xl border border-slate-100 overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-5 sm:p-6 border-b border-slate-100 bg-slate-50 flex items-start justify-between shrink-0">
               <div>
-                <span className="text-[10px] font-bold bg-indigo-600 text-white px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                  Quick Contributor
-                </span>
-                <h3 className="text-base font-black text-slate-900 mt-1">
-                  Share Your Placement Experience
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold bg-indigo-600 text-white px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    Placement Intelligence
+                  </span>
+                  <span className="text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full">
+                    +150 Karma Points
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black text-slate-900 mt-1">
+                  Share Your Placement Experience & Interview Playbook
                 </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Help juniors navigate OA questions, technical rounds, and salary benchmarks.
+                </p>
               </div>
               <button
                 onClick={() => setShareModalOpen(false)}
                 className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSharePlacementSubmit} className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-2">
+            {/* Modal Form Content */}
+            <form onSubmit={handleSharePlacementSubmit} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs">
+                {/* Basic Details Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Company Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={shareCompany}
+                      onChange={(e) => setShareCompany(e.target.value)}
+                      placeholder="e.g. Google, NVIDIA, Qualcomm, Amazon"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold outline-none focus:border-indigo-500 focus:bg-white transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Role / Designation *</label>
+                    <input
+                      type="text"
+                      required
+                      value={shareRole}
+                      onChange={(e) => setShareRole(e.target.value)}
+                      placeholder="e.g. Software Development Engineer (SDE-1)"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold outline-none focus:border-indigo-500 focus:bg-white transition"
+                    />
+                  </div>
+                </div>
+
+                {/* Metadata Grid: Package, Department, Batch, Difficulty */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">CTC / Package Range *</label>
+                    <input
+                      type="text"
+                      required
+                      value={shareCTC}
+                      onChange={(e) => setShareCTC(e.target.value)}
+                      placeholder="e.g. ₹32 LPA (₹22L Base + RSUs)"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold outline-none focus:border-indigo-500 focus:bg-white transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Academic Department *</label>
+                    <select
+                      value={shareDept}
+                      onChange={(e) => setShareDept(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold outline-none focus:border-indigo-500"
+                    >
+                      <option value="Computer Science & Engineering (CSE)">Computer Science (CSE)</option>
+                      <option value="Information Technology & AI (IT)">Information Technology (IT)</option>
+                      <option value="Electronics & Communication (ECE)">Electronics & Comm (ECE)</option>
+                      <option value="Mechanical Engineering (ME)">Mechanical Engineering (ME)</option>
+                      <option value="Central Computing & Hardware Labs">Central Computing Labs</option>
+                      <option value="Civil & Structural Engineering (CE)">Civil Engineering (CE)</option>
+                      <option value="Biotechnology & Bioinformatics (BT)">Biotechnology (BT)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Batch / Year *</label>
+                    <select
+                      value={shareBatch}
+                      onChange={(e) => setShareBatch(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold outline-none focus:border-indigo-500"
+                    >
+                      <option value="2026 Batch">2026 Batch (Current Senior)</option>
+                      <option value="2025 Placed">2025 Placed (Recent Alum)</option>
+                      <option value="2024 Alumni">2024 Alumni</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Difficulty & Status */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Interview Difficulty</label>
+                    <select
+                      value={shareDifficulty}
+                      onChange={(e) => setShareDifficulty(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold outline-none focus:border-indigo-500"
+                    >
+                      <option value="Easy">Easy (Standard fundamentals)</option>
+                      <option value="Medium">Medium (LC Mediums, System design)</option>
+                      <option value="Hard">Hard (LC Hard, Concurrency, In-depth)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Offer / Selection Status</label>
+                    <select
+                      value={shareOfferStatus}
+                      onChange={(e) => setShareOfferStatus(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold outline-none focus:border-indigo-500"
+                    >
+                      <option value="Offer Accepted & Placed">Offer Accepted & Placed</option>
+                      <option value="Offer Received">Offer Received</option>
+                      <option value="Interview Rounds Cleared">Interview Rounds Cleared</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Dynamic Round-by-Round Breakdown Builder */}
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-bold text-slate-800">
+                        Interview Rounds Breakdown ({customRounds.length} Rounds)
+                      </h4>
+                      <p className="text-[11px] text-slate-400">
+                        Detail each round of the evaluation process
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddRound}
+                      className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 text-xs font-bold gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Round</span>
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {customRounds.map((round, idx) => (
+                      <div
+                        key={idx}
+                        className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2 relative"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <input
+                            type="text"
+                            value={round.name}
+                            onChange={(e) => handleRoundChange(idx, 'name', e.target.value)}
+                            placeholder={`e.g. Round ${idx + 1}: Technical Coding`}
+                            className="font-bold text-slate-900 bg-transparent border-b border-transparent focus:border-indigo-500 outline-none w-full text-xs"
+                          />
+                          {customRounds.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveRound(idx)}
+                              className="text-slate-400 hover:text-rose-600 p-1 rounded transition shrink-0"
+                              title="Remove this round"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                        <textarea
+                          rows={2}
+                          value={round.desc}
+                          onChange={(e) => handleRoundChange(idx, 'desc', e.target.value)}
+                          placeholder="Describe topics tested, duration, difficulty, and format..."
+                          className="w-full p-2 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-500 text-xs"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* High-Yield Questions Asked */}
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Company Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={shareCompany}
-                    onChange={(e) => setShareCompany(e.target.value)}
-                    placeholder="e.g. Amazon, Google, Qualcomm"
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold outline-none focus:border-indigo-500"
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Key Interview Questions (1 question per line)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={shareQuestions}
+                    onChange={(e) => setShareQuestions(e.target.value)}
+                    placeholder="e.g. Design a distributed token-bucket rate limiter&#10;Implement Trie-based autocomplete with prefix search&#10;Course Schedule (Topological Sort)"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500 font-mono text-xs"
                   />
                 </div>
 
+                {/* High-Yield Tips */}
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Role / Designation *</label>
-                  <input
-                    type="text"
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Advice & High-Yield Preparation Tips for Juniors *
+                  </label>
+                  <textarea
+                    rows={3}
                     required
-                    value={shareRole}
-                    onChange={(e) => setShareRole(e.target.value)}
-                    placeholder="e.g. SDE-1, Silicon Validation"
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold outline-none focus:border-indigo-500"
+                    value={shareTips}
+                    onChange={(e) => setShareTips(e.target.value)}
+                    placeholder="Share essential preparation strategies, key mistakes to avoid, and domain topics interviewers emphasized most..."
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500 leading-relaxed"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">CTC / Package Range *</label>
-                  <input
-                    type="text"
-                    required
-                    value={shareCTC}
-                    onChange={(e) => setShareCTC(e.target.value)}
-                    placeholder="e.g. ₹32 LPA (₹22L Base)"
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold outline-none focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Number of Rounds *</label>
-                  <select
-                    value={shareRounds}
-                    onChange={(e) => setShareRounds(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold outline-none"
-                  >
-                    <option value="3">3 Rounds</option>
-                    <option value="4">4 Rounds</option>
-                    <option value="5">5 Rounds</option>
-                    <option value="6">6+ Rounds</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Key Interview Questions (1 per line)</label>
-                <textarea
-                  rows={3}
-                  value={shareQuestions}
-                  onChange={(e) => setShareQuestions(e.target.value)}
-                  placeholder="e.g. Design a high-concurrency rate limiter&#10;Lowest Common Ancestor in Binary Tree"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500 font-mono text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Advice & High-Yield Tips for Juniors *</label>
-                <textarea
-                  rows={3}
-                  required
-                  value={shareTips}
-                  onChange={(e) => setShareTips(e.target.value)}
-                  placeholder="Share preparation strategies, mistakes to avoid, and key topics that interviewers cared about most..."
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500 leading-relaxed"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2 shrink-0">
                 <Button variant="outline" size="sm" type="button" onClick={() => setShareModalOpen(false)}>
                   Cancel
                 </Button>
-                <Button size="sm" type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold">
-                  <Check className="w-3.5 h-3.5 mr-1" />
-                  Publish Experience
+                <Button
+                  size="sm"
+                  type="submit"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-1.5 shadow-md shadow-indigo-600/20"
+                >
+                  <Award className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Publish Playbook (+150 pts)</span>
                 </Button>
               </div>
             </form>
