@@ -140,8 +140,12 @@ export const authService = {
 
         // Synchronize updated role to Supabase PostgreSQL profile & auth metadata if role was changed
         if (credentials.role && credentials.role !== profile?.role) {
-          supabase.from('profiles').update({ role: credentials.role }).eq('id', authData.user.id).catch(() => {});
-          supabase.auth.updateUser({ data: { role: credentials.role } }).catch(() => {});
+          try {
+            await supabase.from('profiles').update({ role: credentials.role }).eq('id', authData.user.id);
+            await supabase.auth.updateUser({ data: { role: credentials.role } });
+          } catch (syncErr) {
+            console.warn('[Supabase Auth] Background role sync notice:', syncErr);
+          }
         }
 
         return { user: loggedInUser, accessToken: token };

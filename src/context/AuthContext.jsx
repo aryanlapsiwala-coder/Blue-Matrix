@@ -88,8 +88,14 @@ export function AuthProvider({ children }) {
         tokenStorage.setAccessToken(`knowpass_jwt_${newRole.toLowerCase()}_${Date.now()}`);
 
         if (isSupabaseConfigured && supabase && prev.id) {
-          supabase.from('profiles').update({ role: newRole }).eq('id', prev.id).catch(() => {});
-          supabase.auth.updateUser({ data: { role: newRole } }).catch(() => {});
+          (async () => {
+            try {
+              await supabase.from('profiles').update({ role: newRole }).eq('id', prev.id);
+              await supabase.auth.updateUser({ data: { role: newRole } });
+            } catch (e) {
+              console.warn('[Supabase Role Switch] Notice:', e);
+            }
+          })();
         }
 
         return updated;

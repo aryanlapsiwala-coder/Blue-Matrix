@@ -93,8 +93,24 @@ export function Login() {
       });
       navigate(from, { replace: true });
     } catch (err) {
+      console.error('[Login Error]', err);
+      let userFriendlyMessage = 'Authentication failed. Please check your credentials or register an account.';
+
+      const raw = (err?.message || '').toLowerCase();
+      if (raw.includes('invalid login credentials') || raw.includes('invalid password') || raw.includes('not registered') || raw.includes('user not found')) {
+        userFriendlyMessage = 'Incorrect campus email or password. Please check your credentials or click "Register an Account".';
+      } else if (raw.includes('email not confirmed')) {
+        userFriendlyMessage = 'Your campus email is pending verification. Please verify your email or use 1-Click Demo Login.';
+      } else if (raw.includes('network') || raw.includes('failed to fetch')) {
+        userFriendlyMessage = 'Unable to reach campus authentication server. Please check your network connection.';
+      } else if (raw.includes('rate limit') || raw.includes('too many requests')) {
+        userFriendlyMessage = 'Too many login attempts. Please wait a few seconds and try again.';
+      } else if (err?.message && !raw.includes('function') && !raw.includes('undefined') && !raw.includes('(') && !raw.includes('error:')) {
+        userFriendlyMessage = err.message;
+      }
+
       setErrors({
-        form: err.message || 'User not registered or invalid password. Please check your credentials.',
+        form: userFriendlyMessage,
       });
     } finally {
       setLoading(false);
