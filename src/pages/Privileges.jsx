@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { ROLES } from '../constants/roles';
@@ -75,9 +75,21 @@ const ALUMNI_PRIVILEGES = [
 
 export function Privileges() {
   const { user, role } = useAuth();
+  const isStudent = role === ROLES.STUDENT;
+  const isAlumni = role === ROLES.ALUMNI;
+  const isAdmin = role === ROLES.ADMIN;
+
   const [activeTab, setActiveTab] = useState(
-    role === ROLES.ALUMNI ? 'alumni' : 'students'
+    isAlumni ? 'alumni' : 'students'
   );
+
+  useEffect(() => {
+    if (isAlumni) {
+      setActiveTab('alumni');
+    } else if (isStudent) {
+      setActiveTab('students');
+    }
+  }, [role, isAlumni, isStudent]);
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
@@ -87,11 +99,19 @@ export function Privileges() {
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-amber-500" />
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              Institutional Privileges & Referral Pipeline
+              {isStudent
+                ? 'Junior Student Privileges & Career Unlocks'
+                : isAlumni
+                ? 'Passed-Out Alumni Privileges & Referral Pipeline'
+                : 'Institutional Privileges & Referral Pipeline'}
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Verified rewards, direct corporate referral bonuses, and mock interview unlocks for students and alumni.
+            {isStudent
+              ? 'Fast-Track Referral Request Tokens and 1-on-1 industry mock interviews for enrolled students.'
+              : isAlumni
+              ? 'Corporate referral bonus pipeline (₹30k–₹1.5L) and official campus convocation honors for alumni.'
+              : 'Verified rewards, direct corporate referral bonuses, and mock interview unlocks.'}
           </p>
         </div>
 
@@ -102,43 +122,51 @@ export function Privileges() {
         </div>
       </div>
 
-      {/* Profile-Aware Track Selector */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200/70">
+      {/* Profile-Specific Single Tab Header (Strictly shows only the user's role tab) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2 bg-slate-100/80 rounded-2xl border border-slate-200/70">
         <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setActiveTab('students')}
-            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-2 ${
-              activeTab === 'students'
-                ? 'bg-white text-indigo-700 shadow-md shadow-slate-200/60 border border-slate-200/60'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-            }`}
-          >
-            <GraduationCap className="w-4 h-4" />
-            <span>🎓 Junior Studying Students</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-800">
-              Career Unlocks
-            </span>
-          </button>
+          {/* Junior Student Tab (visible ONLY to Student or Admin) */}
+          {(isStudent || isAdmin) && (
+            <div
+              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-2 ${
+                activeTab === 'students'
+                  ? 'bg-white text-indigo-700 shadow-md shadow-slate-200/60 border border-slate-200/60'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50 cursor-pointer'
+              }`}
+              onClick={() => isAdmin && setActiveTab('students')}
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>🎓 Junior Studying Students</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-800">
+                Career Unlocks
+              </span>
+            </div>
+          )}
 
-          <button
-            onClick={() => setActiveTab('alumni')}
-            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-2 ${
-              activeTab === 'alumni'
-                ? 'bg-white text-emerald-700 shadow-md shadow-slate-200/60 border border-slate-200/60'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-            }`}
-          >
-            <Briefcase className="w-4 h-4" />
-            <span>💼 Passed-Out Alumni Mentors</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800">
-              Referral Pipeline
-            </span>
-          </button>
+          {/* Passed-Out Alumni Tab (visible ONLY to Alumni or Admin) */}
+          {(isAlumni || isAdmin) && (
+            <div
+              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-2 ${
+                activeTab === 'alumni'
+                  ? 'bg-white text-emerald-700 shadow-md shadow-slate-200/60 border border-slate-200/60'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50 cursor-pointer'
+              }`}
+              onClick={() => isAdmin && setActiveTab('alumni')}
+            >
+              <Briefcase className="w-4 h-4" />
+              <span>💼 Passed-Out Alumni Mentors</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800">
+                Referral Pipeline
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="text-xs font-semibold text-slate-500 flex items-center gap-1.5 px-3 py-1.5">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-          <span>100% Verified Academic & Industry Perks</span>
+          <span>
+            {isStudent ? '100% Verified Undergraduate Privileges' : isAlumni ? '100% Verified Alumni Mentor Privileges' : 'Institutional Privileges'}
+          </span>
         </div>
       </div>
 

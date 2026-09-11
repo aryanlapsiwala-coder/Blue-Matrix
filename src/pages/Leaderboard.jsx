@@ -362,6 +362,9 @@ const RECENT_POINTS_FEED = [
 
 export function Leaderboard() {
   const { user } = useAuth();
+  const isStudent = user?.role === 'STUDENT';
+  const isAlumni = user?.role === 'ALUMNI';
+  const isAdmin = user?.role === 'ADMIN';
 
   // Active Leaderboard Track: 'students' or 'alumni' (defaults to active user profile)
   const [activeBoard, setActiveBoard] = useState(user?.role === 'ALUMNI' ? 'alumni' : 'students');
@@ -592,44 +595,52 @@ export function Leaderboard() {
       <div className="space-y-2">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="bg-slate-100 p-1.5 rounded-2xl flex items-center gap-1.5 border border-slate-200 shadow-inner">
-            <button
-              onClick={() => setActiveBoard('students')}
-              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-2 ${
-                activeBoard === 'students'
-                  ? 'bg-white text-indigo-700 shadow-md shadow-slate-200/50 border border-slate-200/60'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-              }`}
-            >
-              <GraduationCap className="w-4 h-4" />
-              <span>🎓 Junior Studying Students</span>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                activeBoard === 'students' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-200 text-slate-600'
-              }`}>
-                {liveStudents.length}
-              </span>
-            </button>
+            {/* Junior Student Tab (visible ONLY to Student or Admin) */}
+            {(isStudent || isAdmin) && (
+              <button
+                onClick={() => setActiveBoard('students')}
+                className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-2 ${
+                  activeBoard === 'students'
+                    ? 'bg-white text-indigo-700 shadow-md shadow-slate-200/50 border border-slate-200/60'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                <GraduationCap className="w-4 h-4" />
+                <span>🎓 Junior Studying Students</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                  activeBoard === 'students' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {liveStudents.length}
+                </span>
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveBoard('alumni')}
-              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-2 ${
-                activeBoard === 'alumni'
-                  ? 'bg-white text-emerald-700 shadow-md shadow-slate-200/50 border border-slate-200/60'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-              }`}
-            >
-              <Briefcase className="w-4 h-4" />
-              <span>💼 Passed-Out Alumni Mentors</span>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                activeBoard === 'alumni' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
-              }`}>
-                {liveAlumni.length}
-              </span>
-            </button>
+            {/* Passed-Out Alumni Tab (visible ONLY to Alumni or Admin) */}
+            {(isAlumni || isAdmin) && (
+              <button
+                onClick={() => setActiveBoard('alumni')}
+                className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-2 ${
+                  activeBoard === 'alumni'
+                    ? 'bg-white text-emerald-700 shadow-md shadow-slate-200/50 border border-slate-200/60'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                <Briefcase className="w-4 h-4" />
+                <span>💼 Passed-Out Alumni Mentors</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                  activeBoard === 'alumni' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {liveAlumni.length}
+                </span>
+              </button>
+            )}
           </div>
 
           <div className="text-xs font-semibold text-slate-500 flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Points partition guarantees 100% fair evaluation</span>
+            <span>
+              {isStudent ? 'Exclusive Junior Studying Students Standings' : isAlumni ? 'Exclusive Passed-Out Alumni Mentors Standings' : 'Points partition guarantees 100% fair evaluation'}
+            </span>
           </div>
         </div>
 
