@@ -39,6 +39,8 @@ import {
   AlertCircle,
   Briefcase,
   ArrowRight,
+  Globe,
+  TrendingUp,
 } from 'lucide-react';
 import { formatDate } from '../utils/formatters';
 

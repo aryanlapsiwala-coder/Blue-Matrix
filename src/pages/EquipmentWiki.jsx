@@ -30,7 +30,8 @@ import {
   Download,
   Sparkles,
   Zap,
-  Info
+  Info,
+  Award,
 } from 'lucide-react';
 
 // ==========================================
