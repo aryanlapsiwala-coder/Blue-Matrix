@@ -268,7 +268,7 @@ ${description.slice(0, 220)}...
       if (!knowledgeType) return;
       setCurrentStep(2);
     } else if (currentStep === 2) {
-      if (!title.trim() || description.length < 500) return;
+      if (!title.trim() || description.length < 200) return;
       setCurrentStep(3);
     } else if (currentStep === 3) {
       setCurrentStep(4);
@@ -380,14 +380,14 @@ ${description.slice(0, 220)}...
             5-Step guided contribution workflow with AI formatting and resource attachments
           </p>
         </div>
-        {currentStep === 2 && description.length < 500 && (
+        {currentStep === 2 && description.length < 200 && (
           <button
             type="button"
             onClick={fillSampleDraft}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-semibold border border-indigo-200 transition"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            Fill 500+ Char Sample Draft
+            Fill 200+ Char Sample Draft
           </button>
         )}
       </div>
@@ -398,7 +398,7 @@ ${description.slice(0, 220)}...
           <span className="text-indigo-600">Step {currentStep} of 5</span>
           <span className="text-slate-400">
             {currentStep === 1 && 'Knowledge Type'}
-            {currentStep === 2 && 'Core Details (500+ Chars)'}
+            {currentStep === 2 && 'Core Details (200+ Chars)'}
             {currentStep === 3 && 'Media & Resources'}
             {currentStep === 4 && 'AI Enhancement Studio'}
             {currentStep === 5 && 'Review & Publish'}
@@ -550,12 +550,12 @@ ${description.slice(0, 220)}...
         </Card>
       )}
 
-      {/* STEP 2: Core Details (500 char min) */}
+      {/* STEP 2: Core Details (200 char min) */}
       {currentStep === 2 && (
         <Card className="p-6 sm:p-8 space-y-6 animate-in fade-in duration-200">
           <CardHeader
             title="Step 2: Core Details & Description"
-            subtitle="Provide document title, academic department, detailed body (min 500 chars), and tags"
+            subtitle="Provide document title, academic department, detailed body (min 200 chars), and tags"
           />
 
           {/* Title */}
@@ -642,21 +642,21 @@ ${description.slice(0, 220)}...
             </div>
           </div>
 
-          {/* Description with 500 Char Minimum Counter */}
+          {/* Description with 200 Char Minimum Counter */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-xs font-semibold text-slate-700">
-                Detailed Knowledge Description <span className="text-rose-500">* (500 chars min)</span>
+                Detailed Knowledge Description <span className="text-rose-500">* (200 chars min)</span>
               </label>
               <div className="flex items-center gap-2">
                 <span
                   className={`text-xs font-mono font-bold px-2 py-0.5 rounded-md ${
-                    description.length >= 500
+                    description.length >= 200
                       ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                       : 'bg-amber-50 text-amber-700 border border-amber-200'
                   }`}
                 >
-                  {description.length} / 500 characters
+                  {description.length} / 200 characters
                 </span>
               </div>
             </div>
@@ -666,9 +666,9 @@ ${description.slice(0, 220)}...
               required
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Explain the concepts, step-by-step methodologies, commands, code blocks, or experimental observations in detail (minimum 500 characters)..."
+              placeholder="Explain the concepts, step-by-step methodologies, commands, code blocks, or experimental observations in detail (minimum 200 characters)..."
               className={`w-full text-xs sm:text-sm px-4 py-3 bg-slate-50 border rounded-xl focus:bg-white outline-none transition font-sans leading-relaxed ${
-                description.length >= 500
+                description.length >= 200
                   ? 'border-emerald-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100'
                   : 'border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
               }`}
@@ -678,16 +678,16 @@ ${description.slice(0, 220)}...
             <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
               <div
                 className={`h-full transition-all duration-200 ${
-                  description.length >= 500 ? 'bg-emerald-500' : 'bg-amber-500'
+                  description.length >= 200 ? 'bg-emerald-500' : 'bg-amber-500'
                 }`}
-                style={{ width: `${Math.min(100, (description.length / 500) * 100)}%` }}
+                style={{ width: `${Math.min(100, (description.length / 200) * 100)}%` }}
               />
             </div>
 
-            {description.length < 500 && (
+            {description.length < 200 && (
               <p className="text-[11px] text-amber-600 mt-1.5 flex items-center gap-1">
                 <AlertCircle className="w-3.5 h-3.5" />
-                Please write at least {500 - description.length} more characters to ensure high academic quality.
+                Please write at least {200 - description.length} more characters to ensure high academic quality.
               </p>
             )}
           </div>
@@ -1141,7 +1141,7 @@ ${description.slice(0, 220)}...
             onClick={handleNext}
             disabled={
               (currentStep === 1 && !knowledgeType) ||
-              (currentStep === 2 && (!title.trim() || description.length < 500))
+              (currentStep === 2 && (!title.trim() || description.length < 200))
             }
             className="text-xs px-6 py-2.5 shadow-md shadow-indigo-600/20"
           >
