@@ -4,6 +4,7 @@ import { Button } from '../components/common/Button';
 import { DotPattern } from '../components/ui/dot-pattern';
 import { CompanyLogo } from '../components/common/CompanyLogo';
 import { useAuth } from '../hooks/useAuth';
+import { ROLES } from '../constants/roles';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { knowledgeService } from '../services/knowledgeService';
 import { pushCampusNotification } from '../services/notificationService';
@@ -278,7 +279,7 @@ const ALUMNI_DIRECTORY = [
 // ==========================================
 
 export function Placements() {
-  const { user, awardPoints } = useAuth();
+  const { user, role, awardPoints } = useAuth();
 
   // Active Tab: 'insights' | 'skills' | 'alumni'
   const [activeTab, setActiveTab] = useState('insights');
@@ -843,16 +844,18 @@ ${playbook.topTips || 'N/A'}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 relative z-10">
-          <Button
-            variant="white"
-            onClick={() => setShareModalOpen(true)}
-            className="!text-black hover:!text-black font-bold text-xs shadow-lg shadow-black/20 flex items-center gap-2 px-4 py-2.5 transition"
-          >
-            <PlusCircle className="w-4 h-4 !text-black stroke-[2.5]" />
-            <span className="!text-black font-bold">Share Placement Playbook</span>
-          </Button>
-        </div>
+        {role === ROLES.ALUMNI && (
+          <div className="flex flex-wrap items-center gap-3 relative z-10">
+            <Button
+              variant="white"
+              onClick={() => setShareModalOpen(true)}
+              className="!text-black hover:!text-black font-bold text-xs shadow-lg shadow-black/20 flex items-center gap-2 px-4 py-2.5 transition"
+            >
+              <PlusCircle className="w-4 h-4 !text-black stroke-[2.5]" />
+              <span className="!text-black font-bold">Share Placement Playbook</span>
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Toast Notifications */}
