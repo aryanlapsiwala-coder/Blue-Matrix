@@ -34,6 +34,70 @@ const STARTER_PROMPTS = [
   'What are the best practices for Verilog testbenches in VLSI lab?',
 ];
 
+function formatInlineText(text, isUser) {
+  if (!text) return text;
+  const parts = [];
+  const regex = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.substring(lastIndex, match.index));
+    }
+    const token = match[0];
+    if (token.startsWith('**') && token.endsWith('**')) {
+      const content = token.slice(2, -2);
+      parts.push(
+        <strong key={match.index} className={isUser ? 'font-semibold text-white' : 'font-semibold text-slate-900'}>
+          {content}
+        </strong>
+      );
+    } else if (token.startsWith('`') && token.endsWith('`')) {
+      const content = token.slice(1, -1);
+      parts.push(
+        <code
+          key={match.index}
+          className={`px-1.5 py-0.5 rounded text-xs font-mono ${
+            isUser ? 'bg-white/20 text-white' : 'bg-slate-100 text-indigo-600 border border-slate-200/60'
+          }`}
+        >
+          {content}
+        </code>
+      );
+    }
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : text;
+}
+
+function renderMessageContent(text, isUser) {
+  if (!text) return null;
+  const paragraphs = text.split(/\n{2,}/);
+  return (
+    <div className="space-y-3 font-sans leading-relaxed">
+      {paragraphs.map((para, idx) => {
+        const lines = para.split('\n');
+        return (
+          <p key={idx} className="leading-relaxed">
+            {lines.map((line, lineIdx) => (
+              <React.Fragment key={lineIdx}>
+                {lineIdx > 0 && <br />}
+                {formatInlineText(line, isUser)}
+              </React.Fragment>
+            ))}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export function Chat() {
   const { user, role } = useAuth();
 
@@ -41,11 +105,11 @@ export function Chat() {
     {
       id: 'msg_welcome',
       sender: 'bot',
-      text: `Hello, **${user?.name || 'Scholar'}**! 👋 I am **KnowBot**, your campus AI knowledge assistant.
+      text: `Hello, **${user?.name || 'Scholar'}**. I am **KnowBot**, your campus academic knowledge assistant.
 
-I am trained on verified **university lecture notes**, **laboratory SOPs**, **equipment manuals**, and **student placement playbooks** from our campus.
+I am indexed across verified **university lecture notes**, **laboratory standard operating procedures (SOPs)**, **equipment manuals**, and **placement playbooks**.
 
-Ask me any technical question, and I will synthesize a grounded response with direct source citations from our repository.`,
+Please enter your technical inquiry or topic below to retrieve a grounded explanation with direct citations from our repository.`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       citations: [],
     },
@@ -156,7 +220,11 @@ Ask me any technical question, and I will synthesize a grounded response with di
               {
                 id: 'msg_welcome',
                 sender: 'bot',
-                text: 'Chat history cleared. How can I assist you with your campus studies or lab work today?',
+                text: `Hello, **${user?.name || 'Scholar'}**. I am **KnowBot**, your campus academic knowledge assistant.
+
+I am indexed across verified **university lecture notes**, **laboratory standard operating procedures (SOPs)**, **equipment manuals**, and **placement playbooks**.
+
+Please enter your technical inquiry or topic below to retrieve a grounded explanation with direct citations from our repository.`,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 citations: [],
               },
@@ -200,7 +268,7 @@ Ask me any technical question, and I will synthesize a grounded response with di
                         : 'bg-white text-slate-800 rounded-tl-none border border-slate-200/80 shadow-xs'
                     }`}
                   >
-                    <div className="whitespace-pre-wrap font-sans space-y-2">{msg.text}</div>
+                    {renderMessageContent(msg.text, isUser)}
 
                     {/* Bottom Timestamp & Copy Button */}
                     <div className="mt-3 pt-2 border-t border-slate-100/40 flex items-center justify-between text-[10px] text-slate-400">

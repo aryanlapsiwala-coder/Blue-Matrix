@@ -20,16 +20,17 @@ async function callGeminiDirect(query, contextDocs = []) {
     : '';
 
   const prompt = hasCampusContext
-    ? `You are KnowBot, an intelligent and helpful AI assistant for the KnowPass academic platform.
-Use the following campus reference documents if relevant, and answer the user's question clearly, conversationally, and accurately.
+    ? `You are KnowBot, a professional academic AI knowledge assistant for the KnowPass academic platform.
+Use the following campus reference documents if relevant, and answer the user's question clearly, professionally, and accurately.
+Maintain an executive, academic tone. Do not use informal emojis.
 If the question is about programming, algorithms, or general knowledge, provide high-quality, cleanly formatted code and explanations without robotic introductions.
 
 Relevant Campus Documents:
 ${contextBlock}
 
 User Question: ${query}`
-    : `You are KnowBot, an intelligent and helpful AI assistant for students and researchers on KnowPass.
-Answer the user's question directly, accurately, and conversationally.
+    : `You are KnowBot, a professional academic AI knowledge assistant for students and researchers on KnowPass.
+Answer the user's question directly, accurately, and professionally. Maintain an executive, academic tone without informal emojis.
 If the user asks for code, provide clean, idiomatic, well-commented code with an explanation.
 Do not introduce yourself repeatedly. Jump straight into the answer.
 
@@ -197,20 +198,20 @@ public class EvenNumbers {
 }
 \`\`\`
 
-### 💡 How It Works:
+### Technical Breakdown:
 * A number \`n\` is even if \`n % 2 == 0\` (remainder is 0 when divided by 2).
-* The \`for\` loop iterates from 1 to 20, checking each number with the modulo operator.`;
+* The \`for\` loop iterates from 1 to 20, evaluating each number via the modulo operator.`;
     } else if (isCampusSpecific) {
-      reply = `I searched the KnowPass knowledge repository and found **"${topMatch.title}"** (by ${topMatch.author}, ${topMatch.authorRole}):
+      reply = `I searched the KnowPass knowledge repository and located **"${topMatch.title}"** (by ${topMatch.author}, ${topMatch.authorRole}):
 
 ${topMatch.summary}
 
-### 📌 Document Content:
+### Document Excerpt:
 ${topMatch.content.slice(0, 450)}...
 
-💡 *Click the citation card below to read the complete attached guide.*`;
+*Refer to the citation card below to read the complete attached guide.*`;
     } else {
-      reply = `I'm here to help! You can ask me anything about programming (Java, Python, C++, Go), algorithms, data structures, campus lab equipment (DGX SuperPOD, oscilloscopes), or university placement preparation.`;
+      reply = `I am ready to assist. You can query technical topics across software engineering (Java, Python, C++, Go), data structures and algorithms, campus laboratory infrastructure (DGX SuperPOD, oscilloscopes), or university placement interview archives.`;
     }
 
     return {
