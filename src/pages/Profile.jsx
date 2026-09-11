@@ -33,7 +33,11 @@ import {
   Zap,
   GraduationCap,
   Cpu,
-  FileCheck
+  FileCheck,
+  DollarSign,
+  AlertCircle,
+  Briefcase,
+  ArrowRight,
 } from 'lucide-react';
 import { formatDate } from '../utils/formatters';
 
@@ -431,11 +435,24 @@ International Higher Education Knowledge Alliance
                 <Building className="w-4 h-4 text-slate-400" />
                 <span>Department: <strong className="text-slate-800">{user?.department || 'Computer Science & Engineering'}</strong></span>
               </div>
-              {user?.yearOfStudy && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-slate-400" />
-                  <span>Academic Level: <strong className="text-slate-800">{user?.yearOfStudy}</strong></span>
-                </div>
+              {role === ROLES.ALUMNI ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <GraduationCap className="w-4 h-4 text-emerald-500" />
+                    <span>Graduation: <strong className="text-slate-800">{user?.graduationYear || 'Class of 2023'}</strong></span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="w-4 h-4 text-indigo-500" />
+                    <span>Current Company: <strong className="text-emerald-700 font-bold">{user?.currentCompany || 'NVIDIA (Senior Engineer)'}</strong></span>
+                  </div>
+                </>
+              ) : (
+                user?.yearOfStudy && (
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-slate-400" />
+                    <span>Academic Level: <strong className="text-slate-800">{user?.yearOfStudy}</strong></span>
+                  </div>
+                )
               )}
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-500" />
@@ -480,125 +497,321 @@ International Higher Education Knowledge Alliance
       )}
 
       {/* ========================================================
-          TANGIBLE ACADEMIC REWARDS & INSTITUTIONAL PRIVILEGES
+          ROLE-SPECIFIC PRIVILEGES & REFERRAL ACCESS
       ======================================================== */}
-      <Card className="overflow-hidden border border-indigo-100 shadow-sm">
-        <div className="p-5 sm:p-6 bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <Award className="w-5 h-5 text-amber-300" />
-              <h3 className="text-base font-extrabold text-white">
-                Tangible Academic Rewards & Institutional Privileges
-              </h3>
-              <span className="text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2.5 py-0.5 rounded-full">
-                Real Academic Credit
-              </span>
-            </div>
-            <p className="text-xs text-slate-300 mt-1">
-              Your KnowPoints translate into official Dean letters, GPU compute hours, and campus privileges
-            </p>
-          </div>
-
-          <Button
-            size="sm"
-            onClick={handleDownloadDeanCertificate}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 shadow-md shadow-emerald-600/20 self-start sm:self-auto"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Download Official Dean's Certificate (.md)</span>
-          </Button>
-        </div>
-
-        <div className="p-5 sm:p-6 bg-slate-50/50 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* Reward 1: GPU Cluster SLURM */}
-            <div className="p-4 bg-white border border-slate-200 rounded-2xl flex flex-col justify-between">
+      <Card className="overflow-hidden border border-slate-200 shadow-sm">
+        {role === ROLES.ALUMNI ? (
+          // ==========================================
+          // PASSED-OUT ALUMNI MENTOR PROFILE VIEW
+          // ==========================================
+          <>
+            <div className="p-5 sm:p-6 bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-                    <Cpu className="w-4 h-4" />
-                  </div>
-                  {(Number(user?.knowPoints) || 20) >= 250 ? (
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                      ✓ Unlocked
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                      🔒 250 pts
-                    </span>
-                  )}
+                <div className="flex items-center gap-2">
+                  <Briefcase className="w-5 h-5 text-emerald-400" />
+                  <h3 className="text-base font-extrabold text-white">
+                    💼 Passed-Out Alumni Mentor Privileges & Referral Pipeline
+                  </h3>
+                  <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-0.5 rounded-full">
+                    Industry Track
+                  </span>
                 </div>
-                <h4 className="text-xs font-bold text-slate-900">Campus DGX GPU Quota</h4>
-                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                  200 Node-Hours priority access on the campus NVIDIA A100 SuperPOD for capstone research.
+                <p className="text-xs text-slate-300 mt-1">
+                  Graduated industry track • No college ID required • Access high-yield corporate referral bonuses & talent scouting
                 </p>
               </div>
-              <div className="mt-3 pt-2 border-t border-slate-100 text-[10px] font-semibold text-purple-700">
-                {(Number(user?.knowPoints) || 20) >= 250
-                  ? 'SLURM Access Key Active'
-                  : `Need ${250 - (Number(user?.knowPoints) || 20)} more pts to unlock`}
+
+              <div className="flex items-center gap-2">
+                <Link
+                  to={ROUTES.PRIVILEGES}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-sm"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Explore Privileges Menu</span>
+                </Link>
               </div>
             </div>
 
-            {/* Reward 2: Faculty LOR */}
-            <div className="p-4 bg-white border border-slate-200 rounded-2xl flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
-                    <GraduationCap className="w-4 h-4" />
+            <div className="p-5 sm:p-6 bg-slate-50/50 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Alumni Privilege 1: Corporate Referral Bonus Pipeline */}
+                <div className="p-5 bg-white border border-emerald-200 rounded-2xl flex flex-col justify-between shadow-2xs space-y-3">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+                          💰
+                        </span>
+                        <div>
+                          <h4 className="text-sm font-black text-slate-900 leading-snug">
+                            The Corporate Referral Bonus Pipeline
+                          </h4>
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                            ₹30,000 to ₹1,50,000 ($1,000+) Per Hire
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-600 text-white">
+                        Financial Urge
+                      </span>
+                    </div>
+
+                    <div className="p-3 bg-emerald-50/70 border border-emerald-200 text-emerald-950 rounded-xl text-xs leading-relaxed space-y-1">
+                      <strong className="text-emerald-900 block font-bold flex items-center gap-1">
+                        <DollarSign className="w-3.5 h-3.5 text-emerald-600" /> The Reality:
+                      </strong>
+                      <p>
+                        Almost all tech companies (Amazon, Microsoft, TCS, Infosys, startups) pay their employees ₹30,000 to ₹1,50,000 ($1,000+) as an internal Referral Bonus if someone they refer gets hired.
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs leading-relaxed space-y-1">
+                      <strong className="text-slate-900 block font-bold flex items-center gap-1">
+                        <Briefcase className="w-3.5 h-3.5 text-indigo-600" /> How It Works:
+                      </strong>
+                      <p>
+                        Top-ranked alumni on KnowPass get first-look access to top-ranked junior talent in their specific domain (e.g., Top 5 backend coders or Top 5 VLSI designers) without getting 200 unvetted LinkedIn DMs.
+                      </p>
+                    </div>
+
+                    <div className="p-2.5 bg-blue-50 border border-blue-200 text-blue-950 rounded-xl text-xs font-medium flex items-start gap-2">
+                      <TrendingUp className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                      <span>
+                        <strong>Result:</strong> Help your junior, secure a huge referral bonus from your employer, and strengthen your firm's pipeline.
+                      </span>
+                    </div>
                   </div>
-                  {(Number(user?.knowPoints) || 20) >= 600 ? (
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                      ✓ Unlocked
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-[11px] text-slate-500 font-semibold">
+                      Current Company: <strong className="text-emerald-700">{user?.currentCompany || 'NVIDIA'}</strong>
                     </span>
-                  ) : (
-                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                      🔒 600 pts
-                    </span>
-                  )}
+                    <Link
+                      to={ROUTES.LEADERBOARD}
+                      className="text-xs font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1"
+                    >
+                      <span>Scout Top Juniors</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
                 </div>
-                <h4 className="text-xs font-bold text-slate-900">Official Faculty LOR</h4>
-                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                  Dean of Academic Affairs certified Letter of Recommendation for master's applications & placements.
+
+                {/* Alumni Privilege 2: Convocation Citation & VIP Privileges */}
+                <div className="p-5 bg-white border border-amber-200 rounded-2xl flex flex-col justify-between shadow-2xs space-y-3">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center">
+                          🏛️
+                        </span>
+                        <div>
+                          <h4 className="text-sm font-black text-slate-900 leading-snug">
+                            Official Convocation Citation & VIP Campus Privileges
+                          </h4>
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                            Guest of Honor & Paid Honorariums
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-600 text-white">
+                        Top 10 Honors
+                      </span>
+                    </div>
+
+                    <div className="p-3 bg-purple-50/80 border border-purple-200 text-purple-950 rounded-xl text-xs leading-relaxed space-y-1">
+                      <strong className="text-purple-900 block font-bold flex items-center gap-1">
+                        <Award className="w-3.5 h-3.5 text-purple-600" /> VIP Campus Privileges:
+                      </strong>
+                      <p>
+                        College invites Top 10 alumni contributors as Guest of Honor / Paid Jury Members for campus hackathons, symposiums, and tech fests.
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-amber-50/80 border border-amber-200 text-amber-950 rounded-xl text-xs leading-relaxed space-y-1">
+                      <strong className="text-amber-900 block font-bold flex items-center gap-1">
+                        <GraduationCap className="w-3.5 h-3.5 text-amber-600" /> Convocation Citation:
+                      </strong>
+                      <p>
+                        Guest lectures with honorariums and an official "Distinguished Alumni Knowledge Builder" citation awarded at the annual alumni meet.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-[11px] text-slate-500 font-semibold">
+                      Class: <strong className="text-slate-800">{user?.graduationYear || 'Class of 2023'}</strong>
+                    </span>
+                    <span className="text-xs font-bold text-amber-700 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Alumni Citation Active</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          // ==========================================
+          // JUNIOR STUDYING STUDENT PROFILE VIEW
+          // ==========================================
+          <>
+            <div className="p-5 sm:p-6 bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5 text-indigo-400" />
+                  <h3 className="text-base font-extrabold text-white">
+                    🎓 Junior Studying Student Privileges & Referral Tokens
+                  </h3>
+                  <span className="text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 px-2.5 py-0.5 rounded-full">
+                    Enrolled Student
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 mt-1">
+                  Active college enrollment • Earned KnowPoints unlock direct Fast-Track Referral Tokens to senior alumni at dream firms
                 </p>
               </div>
-              <div className="mt-3 pt-2 border-t border-slate-100 text-[10px] font-semibold text-indigo-700">
-                {(Number(user?.knowPoints) || 20) >= 600
-                  ? 'Dean LOR Endorsement Certified'
-                  : `Need ${600 - (Number(user?.knowPoints) || 20)} more pts to unlock`}
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleDownloadDeanCertificate}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 shadow-md shadow-emerald-600/20"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Dean's Certificate (.md)</span>
+                </Button>
+                <Link
+                  to={ROUTES.PRIVILEGES}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl transition border border-white/20"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Privileges Menu</span>
+                </Link>
               </div>
             </div>
 
-            {/* Reward 3: Central Lab Pass */}
-            <div className="p-4 bg-white border border-slate-200 rounded-2xl flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-                    <Zap className="w-4 h-4" />
+            <div className="p-5 sm:p-6 bg-slate-50/50 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Student Privilege 1: Fast-Track Referral Token */}
+                <div className="p-5 bg-white border border-indigo-200 rounded-2xl flex flex-col justify-between shadow-2xs space-y-3">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center">
+                          ⚡
+                        </span>
+                        <div>
+                          <h4 className="text-sm font-black text-slate-900 leading-snug">
+                            The "Fast-Track Referral Token"
+                          </h4>
+                          <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">
+                            Direct Connection to Seniors
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-indigo-600 text-white shadow-2xs">
+                        {Math.max(1, Math.floor((Number(user?.knowPoints) || 20) / 50))} Token{Math.max(1, Math.floor((Number(user?.knowPoints) || 20) / 50)) > 1 ? 's' : ''} Ready
+                      </span>
+                    </div>
+
+                    <div className="p-3 bg-rose-50 border border-rose-200 text-rose-950 rounded-xl text-xs leading-relaxed space-y-1">
+                      <strong className="text-rose-900 block font-bold flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 text-rose-600" /> The Problem:
+                      </strong>
+                      <p>
+                        Juniors message hundreds of alumni on LinkedIn: "Hi sir, please refer me", and 99% get ignored.
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-indigo-50/70 border border-indigo-200 text-indigo-950 rounded-xl text-xs leading-relaxed space-y-1">
+                      <strong className="text-indigo-900 block font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" /> The Solution:
+                      </strong>
+                      <p>
+                        When you earn leaderboard points (solving bugs, posting lab tips, upvotes), you unlock a Referral Request Token for a guaranteed Resume Review or Referral from a top-ranked alumnus.
+                      </p>
+                    </div>
+
+                    <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-950 rounded-xl text-xs font-medium flex items-start gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>
+                        <strong>The Trust Factor:</strong> The senior knows you earned your way through verified merit and isn't just a copy-paste spammer.
+                      </span>
+                    </div>
                   </div>
-                  {(Number(user?.knowPoints) || 20) >= 250 ? (
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                      ✓ Unlocked
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-[11px] text-slate-500 font-semibold">
+                      Cost: <strong>50 pts / Token</strong> (Your balance: {user?.knowPoints || 20} pts)
                     </span>
-                  ) : (
-                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                      🔒 250 pts
-                    </span>
-                  )}
+                    <Link
+                      to={ROUTES.LEADERBOARD}
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                    >
+                      <span>Connect with Alumni</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
                 </div>
-                <h4 className="text-xs font-bold text-slate-900">24/7 Prototyping Lab Pass</h4>
-                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                  Keycard authorization for PCB milling, 3D printing suites, and optical testing benches.
-                </p>
-              </div>
-              <div className="mt-3 pt-2 border-t border-slate-100 text-[10px] font-semibold text-amber-700">
-                {(Number(user?.knowPoints) || 20) >= 250
-                  ? 'Keycard NFC Authorized'
-                  : `Need ${250 - (Number(user?.knowPoints) || 20)} more pts to unlock`}
+
+                {/* Student Privilege 2: Mock Technical Interview with Seniors */}
+                <div className="p-5 bg-white border border-emerald-200 rounded-2xl flex flex-col justify-between shadow-2xs space-y-3">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+                          🎯
+                        </span>
+                        <div>
+                          <h4 className="text-sm font-black text-slate-900 leading-snug">
+                            Mock Technical Interview in Target Role
+                          </h4>
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                            1-on-1 45-Min Role Preparation
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-600 text-white">
+                        Top 25 Standings
+                      </span>
+                    </div>
+
+                    <div className="p-3 bg-indigo-50/70 border border-indigo-200 text-indigo-950 rounded-xl text-xs leading-relaxed space-y-1">
+                      <strong className="text-indigo-900 block font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" /> 1-on-1 Target Prep:
+                      </strong>
+                      <p>
+                        Top 25 juniors get matched for a private 1-on-1 45-minute mock interview with an alumnus working in that exact role (e.g., SDE-1 at Amazon, FPGA Engineer at Texas Instruments).
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-emerald-50/80 border border-emerald-200 text-emerald-950 rounded-xl text-xs leading-relaxed space-y-1">
+                      <strong className="text-emerald-900 block font-bold flex items-center gap-1">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Industry Hiring Bar:
+                      </strong>
+                      <p>
+                        Get direct, real-world feedback on what current company hiring bars actually look like before visiting campus recruitment rounds.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-[11px] text-slate-500 font-semibold">
+                      Eligibility: <strong className="text-emerald-700">Active Leaderboard Contributor</strong>
+                    </span>
+                    <Link
+                      to={ROUTES.PLACEMENTS}
+                      className="text-xs font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1"
+                    >
+                      <span>Explore Target Roles</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
       </Card>
 
       {/* ========================================================

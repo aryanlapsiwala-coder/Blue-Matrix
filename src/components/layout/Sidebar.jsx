@@ -24,7 +24,8 @@ import {
   Send,
   AlertCircle,
   GraduationCap,
-  Cpu
+  Cpu,
+  Sparkles,
 } from 'lucide-react';
 
 export function Sidebar({ open, onClose }) {
@@ -96,6 +97,12 @@ export function Sidebar({ open, onClose }) {
       name: 'Campus Leaderboard',
       to: ROUTES.LEADERBOARD,
       icon: Trophy,
+      roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ALUMNI, ROLES.ADMIN],
+    },
+    {
+      name: 'Privileges & Perks',
+      to: ROUTES.PRIVILEGES,
+      icon: Sparkles,
       roles: [ROLES.STUDENT, ROLES.FACULTY, ROLES.ALUMNI, ROLES.ADMIN],
     },
     {

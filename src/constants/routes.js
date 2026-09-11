@@ -12,6 +12,7 @@ export const ROUTES = {
   PLACEMENTS: '/placements',
   LEADERBOARD: '/leaderboard',
   EQUIPMENT: '/equipment',
+  PRIVILEGES: '/privileges',
   ADMIN: '/admin',
   PROFILE: '/profile',
   NOT_FOUND: '*',

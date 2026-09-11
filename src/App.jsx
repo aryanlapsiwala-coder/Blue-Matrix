@@ -15,6 +15,7 @@ import { Leaderboard } from './pages/Leaderboard';
 import { EquipmentWiki } from './pages/EquipmentWiki';
 import { Admin } from './pages/Admin';
 import { Profile } from './pages/Profile';
+import { Privileges } from './pages/Privileges';
 import { NotFound } from './pages/NotFound';
 
 import { ROUTES } from './constants/routes';
@@ -45,6 +46,7 @@ export function App() {
             <Route path={ROUTES.PLACEMENTS} element={<Placements />} />
             <Route path={ROUTES.LEADERBOARD} element={<Leaderboard />} />
             <Route path={ROUTES.EQUIPMENT} element={<EquipmentWiki />} />
+            <Route path={ROUTES.PRIVILEGES} element={<Privileges />} />
             <Route path={ROUTES.PROFILE} element={<Profile />} />
 
             {/* Admin Protected Route (Restricted strictly to ADMIN role) */}

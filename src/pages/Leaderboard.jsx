@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardHeader } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { useAuth } from '../hooks/useAuth';
+import { ROUTES } from '../constants/routes';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { DotPattern } from '../components/ui/dot-pattern';
 import {
@@ -361,8 +363,16 @@ const RECENT_POINTS_FEED = [
 export function Leaderboard() {
   const { user } = useAuth();
 
-  // Active Leaderboard Track: 'students' or 'alumni'
-  const [activeBoard, setActiveBoard] = useState('students');
+  // Active Leaderboard Track: 'students' or 'alumni' (defaults to active user profile)
+  const [activeBoard, setActiveBoard] = useState(user?.role === 'ALUMNI' ? 'alumni' : 'students');
+
+  useEffect(() => {
+    if (user?.role === 'ALUMNI') {
+      setActiveBoard('alumni');
+    } else if (user?.role === 'STUDENT') {
+      setActiveBoard('students');
+    }
+  }, [user?.role]);
 
   // Filters & Search
   const [deptFilter, setDeptFilter] = useState('All');
@@ -641,299 +651,28 @@ export function Leaderboard() {
         </div>
       </div>
 
-      {/* ========================================================
-          INSTITUTIONAL UTILITY & REWARDS MATRIX (WHAT YOU UNLOCK)
-      ======================================================== */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+      {/* Quick Link Banner to Dedicated Privileges & Knowledge Flywheel Page */}
+      <div className="p-4 bg-gradient-to-r from-indigo-50/80 via-white to-purple-50/80 border border-indigo-100 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-2xs">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
             <Sparkles className="w-4 h-4 text-amber-500" />
-            <h3 className="text-base font-black text-slate-900">
-              {activeBoard === 'students' ? '🎓 Junior Student Unlocks & Career Privileges' : '💼 Passed-Out Alumni Privileges & Referral Pipeline'}
-            </h3>
           </div>
-          <span className="text-[11px] font-bold text-slate-400">
-            {activeBoard === 'students' ? 'Exclusively for Studying Undergraduates' : 'Exclusively for Graduated Alumni Mentors'}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {(activeBoard === 'students' ? STUDENT_PERK_TIERS : ALUMNI_PERK_TIERS).map((perk, idx) => (
-            <div
-              key={idx}
-              className={`p-6 rounded-3xl bg-white border shadow-xs flex flex-col justify-between space-y-4 ${perk.ring} hover:shadow-md transition`}
-            >
-              <div className="space-y-4">
-                {/* Header */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl w-11 h-11 rounded-2xl bg-slate-50 border border-slate-200/60 flex items-center justify-center shrink-0 shadow-2xs">
-                      {perk.icon}
-                    </span>
-                    <div>
-                      <h4 className="text-base font-black text-slate-900 leading-snug">
-                        {perk.title}
-                      </h4>
-                      {perk.subtitle && (
-                        <p className="text-xs font-semibold text-slate-500 mt-0.5">
-                          {perk.subtitle}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shrink-0 ${perk.badgeBg}`}>
-                    {perk.rank}
-                  </span>
-                </div>
-
-                {/* Content Blocks */}
-                <div className="space-y-3 text-xs leading-relaxed">
-                  {/* For Junior Students: The Problem */}
-                  {perk.problem && (
-                    <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200/80 text-rose-900 space-y-1">
-                      <div className="font-bold flex items-center gap-1.5 text-rose-800">
-                        <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                        <span>The Problem</span>
-                      </div>
-                      <p className="text-rose-950/90">{perk.problem}</p>
-                    </div>
-                  )}
-
-                  {/* For Junior Students: The Solution */}
-                  {perk.solution && (
-                    <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200/70 text-indigo-950 space-y-1">
-                      <div className="font-bold flex items-center gap-1.5 text-indigo-800">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>The Solution</span>
-                      </div>
-                      <p className="text-indigo-950/90">{perk.solution}</p>
-                    </div>
-                  )}
-
-                  {/* For Junior Students: Trust Factor */}
-                  {perk.trustFactor && (
-                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200/70 text-emerald-950 flex items-start gap-2">
-                      <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                      <p className="font-medium text-emerald-900">
-                        <strong>The Trust Factor:</strong> {perk.trustFactor}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* For Alumni: The Reality */}
-                  {perk.reality && (
-                    <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-emerald-950 space-y-1">
-                      <div className="font-bold flex items-center gap-1.5 text-emerald-800">
-                        <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>The Reality</span>
-                      </div>
-                      <p className="text-emerald-950/90">{perk.reality}</p>
-                    </div>
-                  )}
-
-                  {/* For Alumni: How It Works */}
-                  {perk.howItWorks && (
-                    <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-800 space-y-1">
-                      <div className="font-bold flex items-center gap-1.5 text-slate-800">
-                        <Briefcase className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>How It Works</span>
-                      </div>
-                      <p className="text-slate-700">{perk.howItWorks}</p>
-                    </div>
-                  )}
-
-                  {/* For Alumni: Result */}
-                  {perk.result && (
-                    <div className="p-3 rounded-xl bg-blue-50 border border-blue-200/70 text-blue-950 flex items-start gap-2">
-                      <TrendingUp className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                      <p className="font-medium text-blue-900">
-                        <strong>Result:</strong> {perk.result}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* For Alumni Perk 2: Campus Privileges */}
-                  {perk.campusPrivileges && (
-                    <div className="p-3.5 rounded-2xl bg-purple-50/80 border border-purple-200 text-purple-950 space-y-1">
-                      <div className="font-bold flex items-center gap-1.5 text-purple-800">
-                        <Award className="w-3.5 h-3.5 text-purple-600" />
-                        <span>VIP Campus Privileges</span>
-                      </div>
-                      <p className="text-purple-900">{perk.campusPrivileges}</p>
-                    </div>
-                  )}
-
-                  {/* For Alumni Perk 2: Citation */}
-                  {perk.citation && (
-                    <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-amber-950 space-y-1">
-                      <div className="font-bold flex items-center gap-1.5 text-amber-800">
-                        <GraduationCap className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Convocation Citation & Honorarium</span>
-                      </div>
-                      <p className="text-amber-900">{perk.citation}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Card Footer */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-semibold">
-                <span>{perk.tier}</span>
-                <span className="text-indigo-600 font-bold flex items-center gap-1">
-                  Active Privilege <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ========================================================
-          PART 3: THE SYMBIOTIC "KNOWLEDGE FLYWHEEL"
-      ======================================================== */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 border border-indigo-800/40 p-6 sm:p-8 shadow-2xl text-white">
-        {/* Ambient Glows */}
-        <div className="absolute -right-16 -top-16 w-80 h-80 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -left-16 -bottom-16 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 space-y-6">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-indigo-800/40 pb-5">
-            <div className="space-y-1.5">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-black tracking-wider uppercase">
-                <Repeat className="w-3.5 h-3.5 text-indigo-400 animate-spin" style={{ animationDuration: '8s' }} />
-                <span>Closed-Loop Value Engine</span>
-              </div>
-              <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-                Part 3: The Symbiotic "Knowledge Flywheel"
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-300 max-w-3xl leading-relaxed">
-                A self-reinforcing loop where <strong>passed-out seniors</strong> earn corporate referral bonuses (₹30k–₹1.5L+) and <strong>studying juniors</strong> bypass ignored LinkedIn DMs with verified merit credentials.
-              </p>
-            </div>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-bold shrink-0">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Zero-Spam Guarantee</span>
-            </div>
-          </div>
-
-          {/* Flywheel 4 Stages */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 relative">
-            {/* Step 1 */}
-            <div className="rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 p-4 sm:p-5 flex flex-col justify-between space-y-3 transition group">
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-lg">
-                    📝
-                  </span>
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                    Stage 1 • Senior
-                  </span>
-                </div>
-                <h4 className="text-sm font-black text-white group-hover:text-indigo-200 transition">
-                  Senior SOP Contribution
-                </h4>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Passed-out alumni publish real industry playbooks, production system designs, and verified lab tips from their daily tech jobs.
-                </p>
-              </div>
-              <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[11px] text-indigo-300 font-semibold">
-                <span>Knowledge Seed</span>
-                <ArrowRight className="w-3.5 h-3.5 text-indigo-400" />
-              </div>
-            </div>
-
-            {/* Step 2 */}
-            <div className="rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 p-4 sm:p-5 flex flex-col justify-between space-y-3 transition group">
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="w-9 h-9 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-lg">
-                    ⚡
-                  </span>
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                    Stage 2 • Junior
-                  </span>
-                </div>
-                <h4 className="text-sm font-black text-white group-hover:text-blue-200 transition">
-                  Junior Learning & Point Farming
-                </h4>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Studying juniors study the SOPs, solve code bugs in old guides, reproduce experiments, and climb the verified leaderboard rankings.
-                </p>
-              </div>
-              <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[11px] text-blue-300 font-semibold">
-                <span>Proof of Work</span>
-                <ArrowRight className="w-3.5 h-3.5 text-blue-400" />
-              </div>
-            </div>
-
-            {/* Step 3 */}
-            <div className="rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 p-4 sm:p-5 flex flex-col justify-between space-y-3 transition group">
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-lg">
-                    🎫
-                  </span>
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                    Stage 3 • Token
-                  </span>
-                </div>
-                <h4 className="text-sm font-black text-white group-hover:text-purple-200 transition">
-                  Fast-Track Referral Token Unlocked
-                </h4>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  High-ranking juniors exchange points for guaranteed referral & resume review requests to alumni at their dream tech companies.
-                </p>
-              </div>
-              <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[11px] text-purple-300 font-semibold">
-                <span>Direct Access</span>
-                <ArrowRight className="w-3.5 h-3.5 text-purple-400" />
-              </div>
-            </div>
-
-            {/* Step 4 */}
-            <div className="rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 p-4 sm:p-5 flex flex-col justify-between space-y-3 transition group">
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-lg">
-                    💰
-                  </span>
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    Stage 4 • Win-Win
-                  </span>
-                </div>
-                <h4 className="text-sm font-black text-white group-hover:text-emerald-200 transition">
-                  Referral Bonus & Placement Win
-                </h4>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Senior vets the pre-qualified candidate, refers them internally, and secures a ₹30,000–₹1,50,000 corporate referral bonus upon hiring.
-                </p>
-              </div>
-              <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[11px] text-emerald-300 font-semibold">
-                <span>Loop Closes</span>
-                <Repeat className="w-3.5 h-3.5 text-emerald-400" />
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Contrast Bar */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 text-xs">
-            <div className="p-3.5 rounded-2xl bg-rose-950/30 border border-rose-800/40 text-rose-200/90 flex items-start gap-2.5">
-              <span className="text-sm mt-0.5">❌</span>
-              <div>
-                <strong className="text-rose-100 block mb-0.5">The Broken Status Quo (Cold DMs):</strong>
-                Juniors spam 200 random alumni on LinkedIn with generic resumes. 99% get deleted. Seniors get annoyed by unvetted inbox spam.
-              </div>
-            </div>
-            <div className="p-3.5 rounded-2xl bg-emerald-950/30 border border-emerald-800/40 text-emerald-200/90 flex items-start gap-2.5">
-              <span className="text-sm mt-0.5">✅</span>
-              <div>
-                <strong className="text-emerald-100 block mb-0.5">The KnowPass Flywheel Solution:</strong>
-                Seniors only review proven campus contributors. Juniors earn direct access through merit. Senior gets a ₹30k–₹1.5L referral reward.
-              </div>
-            </div>
+          <div>
+            <span className="font-bold text-slate-800">
+              {activeBoard === 'students' ? '🎓 Looking for your Fast-Track Referral Tokens & Mock Interviews?' : '💼 Looking for the Corporate Referral Bonus Pipeline & Convocation Citations?'}
+            </span>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Explore the full privileges matrix and the interactive Symbiotic Knowledge Flywheel in the dedicated Privileges menu.
+            </p>
           </div>
         </div>
+        <Link
+          to={ROUTES.PRIVILEGES}
+          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition flex items-center gap-1.5 shrink-0 shadow-xs"
+        >
+          <span>View Privileges & Flywheel</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
       </div>
 
       {/* ========================================================
