@@ -201,6 +201,31 @@ export function Contribute() {
   // Step 5: Integrity
   const [integrityAgreed, setIntegrityAgreed] = useState(false);
 
+  // Reset wizard to Step 1 if logged in user changes or on fresh session
+  useEffect(() => {
+    const lastSessionEmail = sessionStorage.getItem('knowpass_contribute_user_email');
+    if (!user || user.email !== lastSessionEmail) {
+      setCurrentStep(1);
+      setTitle('');
+      setDescription('');
+      setKnowledgeType('Project Experience');
+      setUploadedFiles([]);
+      setYoutubeUrl('');
+      setVideoRecorded(false);
+      setRecordedVideoUrl(null);
+      setIntegrityAgreed(false);
+      if (user?.email) {
+        sessionStorage.setItem('knowpass_contribute_user_email', user.email);
+      }
+      try {
+        sessionStorage.removeItem('knowpass_contribute_step');
+        sessionStorage.removeItem('knowpass_contribute_type');
+        sessionStorage.removeItem('knowpass_contribute_title');
+        sessionStorage.removeItem('knowpass_contribute_desc');
+      } catch {}
+    }
+  }, [user?.email]);
+
   // Update default tag suggestions when knowledgeType changes
   useEffect(() => {
     const suggested = AI_TAG_DICTIONARY[knowledgeType] || [];
@@ -209,7 +234,7 @@ export function Contribute() {
     }
   }, [knowledgeType]);
 
-  // Persist current step and draft inputs to prevent data loss
+  // Persist current step and draft inputs to prevent accidental in-session page refresh data loss
   useEffect(() => {
     try {
       sessionStorage.setItem('knowpass_contribute_step', currentStep.toString());

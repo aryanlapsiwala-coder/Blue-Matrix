@@ -42,6 +42,12 @@ export function AuthProvider({ children }) {
     try {
       const { user: loggedInUser } = await authService.login(credentials);
       setUser(loggedInUser);
+      try {
+        sessionStorage.removeItem('knowpass_contribute_step');
+        sessionStorage.removeItem('knowpass_contribute_type');
+        sessionStorage.removeItem('knowpass_contribute_title');
+        sessionStorage.removeItem('knowpass_contribute_desc');
+      } catch {}
       return loggedInUser;
     } finally {
       setLoading(false);
@@ -128,6 +134,12 @@ export function AuthProvider({ children }) {
     try {
       await authService.logout();
       setUser(null);
+      try {
+        sessionStorage.removeItem('knowpass_contribute_step');
+        sessionStorage.removeItem('knowpass_contribute_type');
+        sessionStorage.removeItem('knowpass_contribute_title');
+        sessionStorage.removeItem('knowpass_contribute_desc');
+      } catch {}
     } finally {
       setLoading(false);
     }
