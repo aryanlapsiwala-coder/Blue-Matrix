@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { AlertCircle, RotateCcw, Home } from 'lucide-react';
 import { Button } from './Button';
 
@@ -40,6 +40,11 @@ export class ErrorBoundary extends React.Component {
               <p className="text-xs text-slate-500 leading-relaxed">
                 An unexpected interface issue occurred. Your data and contributions have been safely preserved.
               </p>
+              {this.state.error?.message && (
+                <p className="text-[11px] text-rose-600 font-mono bg-rose-50 p-2 rounded-xl mt-2 break-all text-left">
+                  {this.state.error.message}
+                </p>
+              )}
             </div>
 
             <div className="flex items-center justify-center gap-2 pt-2">

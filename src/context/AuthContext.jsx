@@ -3,6 +3,7 @@ import { tokenStorage } from '../utils/tokenStorage';
 import { authService, DEMO_USERS } from '../services/authService';
 import { ROLES } from '../constants/roles';
 import { pushCampusNotification } from '../services/notificationService';
+import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
 export const AuthContext = createContext(null);
 
@@ -83,25 +84,30 @@ export function AuthProvider({ children }) {
       const updated = { ...prev, knowPoints: newPts };
       tokenStorage.setUser(updated);
 
-      // Push live notification
-      pushCampusNotification(prev.email, {
-        title: `+${amount} KnowPoints Earned! 🎉`,
-        desc: reason ? `${reason} (+${amount} pts). Total balance: ${newPts} pts.` : `Credited for knowledge sharing. Balance: ${newPts} pts.`,
-        type: 'points',
-        link: '/profile',
-      });
+      try {
+        // Push live notification
+        pushCampusNotification(prev.email, {
+          title: `+${amount} KnowPoints Earned! 🎉`,
+          desc: reason ? `${reason} (+${amount} pts). Total balance: ${newPts} pts.` : `Credited for knowledge sharing. Balance: ${newPts} pts.`,
+          type: 'points',
+          link: '/profile',
+        });
 
-      // Async update Supabase PostgreSQL profiles table
-      if (isSupabaseConfigured && supabase && prev.email) {
-        supabase
-          .from('profiles')
-          .update({ know_points: newPts })
-          .eq('email', prev.email)
-          .then(({ error }) => {
-            if (error) console.warn('[AuthContext] Error updating know_points:', error.message);
-            else console.log(`🏆 [Gamification] +${amount} pts awarded to ${prev.email} (${reason})! New total: ${newPts}`);
-          });
+        // Async update Supabase PostgreSQL profiles table
+        if (isSupabaseConfigured && supabase && prev.email) {
+          supabase
+            .from('profiles')
+            .update({ know_points: newPts })
+            .eq('email', prev.email)
+            .then(({ error }) => {
+              if (error) console.warn('[AuthContext] Error updating know_points:', error.message);
+              else console.log(`🏆 [Gamification] +${amount} pts awarded to ${prev.email} (${reason})! New total: ${newPts}`);
+            });
+        }
+      } catch (err) {
+        console.warn('[AuthContext] Error in awardPoints side-effect:', err);
       }
+
       return updated;
     });
   }, []);
