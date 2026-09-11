@@ -37,7 +37,13 @@ import {
   User,
   Trash2,
   Edit3,
-  Save
+  Save,
+  AlertTriangle,
+  Flag,
+  Bug,
+  Wrench,
+  Check,
+  Plus
 } from 'lucide-react';
 
 const DEPARTMENTS_FILTER = [
@@ -147,6 +153,17 @@ export function KnowledgeBase() {
     tags: '',
   });
   const [savingEdit, setSavingEdit] = useState(false);
+
+  // Issue Reporting & Resolution State
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportCategory, setReportCategory] = useState('Bug / Syntax Error');
+  const [reportTitle, setReportTitle] = useState('');
+  const [reportDescription, setReportDescription] = useState('');
+  const [suggestedFix, setSuggestedFix] = useState('');
+  const [submittingReport, setSubmittingReport] = useState(false);
+  const [resolvingReportId, setResolvingReportId] = useState(null);
+  const [resolutionInput, setResolutionInput] = useState('');
+  const [reportToast, setReportToast] = useState(null);
 
   // Author-only access check
   const canUserEdit = (item) => {
@@ -439,18 +456,24 @@ export function KnowledgeBase() {
     }
   };
 
-  // Open Detail Modal and fetch live comments
+  // Open Detail Modal and fetch live comments & issue reports
   const handleOpenDetail = async (item) => {
     setActiveItem(item);
     try {
-      const dbComments = await knowledgeService.getComments(item.id);
-      if (dbComments && dbComments.length > 0) {
-        setActiveItem((prev) =>
-          prev && prev.id === item.id ? { ...prev, comments: dbComments } : prev
-        );
-      }
+      const [dbComments, dbReports] = await Promise.all([
+        knowledgeService.getComments(item.id),
+        knowledgeService.getReports(item.id),
+      ]);
+      setActiveItem((prev) => {
+        if (!prev || prev.id !== item.id) return prev;
+        return {
+          ...prev,
+          comments: dbComments && dbComments.length > 0 ? dbComments : (prev.comments || []),
+          reports: dbReports || prev.reports || [],
+        };
+      });
     } catch (err) {
-      console.warn('Error loading comments from Supabase:', err);
+      console.warn('Error loading comments/reports:', err);
     }
   };
 
@@ -641,6 +664,131 @@ export function KnowledgeBase() {
       await knowledgeService.delete(id);
       setItems((prev) => prev.filter((i) => i.id !== id));
       setActiveItem(null);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // ISSUE REPORTING & AUTHOR RESOLUTION HANDLERS
+  // -------------------------------------------------------------
+  const handleOpenReportModal = () => {
+    setReportCategory('Bug / Syntax Error');
+    setReportTitle('');
+    setReportDescription('');
+    setSuggestedFix('');
+    setReportModalOpen(true);
+  };
+
+  const handleCloseReportModal = () => {
+    setReportModalOpen(false);
+    setReportTitle('');
+    setReportDescription('');
+    setSuggestedFix('');
+  };
+
+  const handleSubmitReport = async (e) => {
+    if (e) e.preventDefault();
+    if (!activeItem) return;
+    if (!reportTitle.trim()) {
+      alert('Please provide a brief title summarizing the issue.');
+      return;
+    }
+    if (!reportDescription.trim()) {
+      alert('Please explain the issue or error encountered.');
+      return;
+    }
+
+    setSubmittingReport(true);
+    try {
+      const result = await knowledgeService.addReport(activeItem.id, {
+        reporterName: user?.name || 'Campus Student',
+        reporterEmail: user?.email || '',
+        reporterRole: role || ROLES.STUDENT,
+        category: reportCategory,
+        title: reportTitle.trim(),
+        description: reportDescription.trim(),
+        suggestedFix: suggestedFix.trim(),
+        authorEmail: activeItem.authorEmail,
+        entryTitle: activeItem.title,
+      });
+
+      // Update activeItem & items
+      setActiveItem((prev) => ({
+        ...prev,
+        reports: result.allReports,
+      }));
+      setItems((prev) =>
+        prev.map((it) => (it.id === activeItem.id ? { ...it, reports: result.allReports } : it))
+      );
+
+      handleCloseReportModal();
+      setReportToast('Issue reported successfully! The author has been notified.');
+      setTimeout(() => setReportToast(null), 4000);
+    } catch (err) {
+      console.error('Error submitting report:', err);
+      alert('Could not submit report. Please try again.');
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
+
+  const handleStartResolveReport = (report) => {
+    setResolvingReportId(report.id);
+    setResolutionInput(
+      report.suggestedFix ? `Applied suggested fix: ${report.suggestedFix}` : 'Addressed and corrected in document.'
+    );
+  };
+
+  const handleCancelResolveReport = () => {
+    setResolvingReportId(null);
+    setResolutionInput('');
+  };
+
+  const handleConfirmResolveReport = async (reportId) => {
+    if (!activeItem) return;
+    const resolverName = user?.name || activeItem.author || 'Author';
+
+    try {
+      const result = await knowledgeService.resolveReport(
+        activeItem.id,
+        reportId,
+        resolutionInput.trim() || 'Resolved and corrected in the document.',
+        resolverName,
+        activeItem.title
+      );
+
+      setActiveItem((prev) => ({
+        ...prev,
+        reports: result.allReports,
+      }));
+      setItems((prev) =>
+        prev.map((it) => (it.id === activeItem.id ? { ...it, reports: result.allReports } : it))
+      );
+
+      setResolvingReportId(null);
+      setResolutionInput('');
+      setReportToast('Issue marked as resolved! Student notified and rewarded +10 KnowPoints.');
+      setTimeout(() => setReportToast(null), 4000);
+    } catch (err) {
+      console.error('Error resolving report:', err);
+      alert('Could not resolve report. Please try again.');
+    }
+  };
+
+  const handleDeleteReport = async (reportId) => {
+    if (!activeItem) return;
+    if (!window.confirm('Are you sure you want to dismiss and delete this reported issue?')) return;
+
+    try {
+      const result = await knowledgeService.deleteReport(activeItem.id, reportId);
+      setActiveItem((prev) => ({
+        ...prev,
+        reports: result.allReports,
+      }));
+      setItems((prev) =>
+        prev.map((it) => (it.id === activeItem.id ? { ...it, reports: result.allReports } : it))
+      );
+    } catch (err) {
+      console.error('Error deleting report:', err);
     }
   };
 
@@ -1429,6 +1577,178 @@ export function KnowledgeBase() {
                 </div>
               )}
 
+              {/* Peer Issue Reports & Corrections Engine */}
+              <div className="space-y-4 pt-4 border-t border-slate-100">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-xs flex items-center gap-2">
+                      <Flag className="w-4 h-4 text-amber-500" />
+                      Community Issue Reports & Accuracy Corrections
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                        {(activeItem.reports || []).filter((r) => r.status === 'OPEN').length} Open
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Found a typo, outdated command, or broken step? Report it so the author can fix it and you can earn bug bounty points.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={handleOpenReportModal}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-semibold border border-amber-200 transition shadow-sm self-start sm:self-auto"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                    Report an Issue
+                  </button>
+                </div>
+
+                {/* Reports List */}
+                <div className="space-y-2.5">
+                  {Array.isArray(activeItem.reports) && activeItem.reports.length > 0 ? (
+                    activeItem.reports.map((report) => {
+                      const isOpen = report.status === 'OPEN';
+                      const canResolve = canUserEdit(activeItem) && isOpen;
+                      const isResolvingThis = resolvingReportId === report.id;
+
+                      return (
+                        <div
+                          key={report.id}
+                          className={`p-3.5 rounded-xl border text-xs transition ${
+                            isOpen
+                              ? 'bg-amber-50/40 border-amber-200/80 shadow-sm'
+                              : 'bg-emerald-50/30 border-emerald-200/60'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-1.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                                  isOpen
+                                    ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                    : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                }`}
+                              >
+                                {isOpen ? (
+                                  <>
+                                    <Bug className="w-3 h-3 text-amber-600" />
+                                    OPEN
+                                  </>
+                                ) : (
+                                  <>
+                                    <Check className="w-3 h-3 text-emerald-600" />
+                                    RESOLVED
+                                  </>
+                                )}
+                              </span>
+
+                              <span className="text-[10px] font-semibold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                {report.category}
+                              </span>
+
+                              <span className="text-[11px] font-medium text-slate-500">
+                                Reported by <strong className="text-slate-700">{report.reporterName}</strong>
+                              </span>
+
+                              <span className="text-[10px] text-slate-400">
+                                {formatDate(report.createdAt)}
+                              </span>
+                            </div>
+
+                            {/* Author/Admin Actions */}
+                            <div className="flex items-center gap-1">
+                              {canResolve && !isResolvingThis && (
+                                <button
+                                  onClick={() => handleStartResolveReport(report)}
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[10px] shadow-sm transition"
+                                >
+                                  <Wrench className="w-3 h-3" />
+                                  Resolve Issue
+                                </button>
+                              )}
+
+                              {(role === ROLES.ADMIN || canUserEdit(activeItem)) && (
+                                <button
+                                  onClick={() => handleDeleteReport(report.id)}
+                                  className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
+                                  title="Dismiss report"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <h5 className="font-bold text-slate-900 text-xs mb-1">
+                            {report.title}
+                          </h5>
+
+                          <p className="text-slate-700 text-xs leading-relaxed mb-2">
+                            {report.description}
+                          </p>
+
+                          {report.suggestedFix && (
+                            <div className="p-2.5 bg-white/80 rounded-lg border border-slate-200 text-[11px] mb-2 font-mono">
+                              <span className="font-bold text-indigo-900 font-sans block mb-0.5">💡 Suggested Correction:</span>
+                              <span className="text-slate-800">{report.suggestedFix}</span>
+                            </div>
+                          )}
+
+                          {/* Resolution Note if resolved */}
+                          {!isOpen && (
+                            <div className="p-2.5 bg-emerald-100/70 border border-emerald-200 rounded-lg text-[11px] text-emerald-950">
+                              <div className="flex items-center gap-1.5 font-bold mb-0.5">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Resolved by {report.resolvedBy || 'Author'} {report.resolvedAt && `(${formatDate(report.resolvedAt)})`}</span>
+                              </div>
+                              <p className="text-emerald-900">{report.resolutionNote}</p>
+                            </div>
+                          )}
+
+                          {/* Inline Author Resolution Form */}
+                          {isResolvingThis && (
+                            <div className="mt-3 p-3 bg-white rounded-xl border border-emerald-300 shadow-sm space-y-2">
+                              <label className="block text-[11px] font-bold text-emerald-950">
+                                Explain how you resolved this issue (or note the changes made):
+                              </label>
+                              <textarea
+                                rows={2}
+                                value={resolutionInput}
+                                onChange={(e) => setResolutionInput(e.target.value)}
+                                className="w-full text-xs p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                placeholder="e.g., Updated the pip command in section 2 with --index-url. Thanks for catching this!"
+                              />
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={handleCancelResolveReport}
+                                  className="px-2.5 py-1 text-xs rounded-lg text-slate-600 hover:bg-slate-100 transition"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleConfirmResolveReport(report.id)}
+                                  className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow transition"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  Confirm Resolution (+10 Pts Bounty)
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
+                      <p className="text-xs text-slate-500">
+                        No issues reported yet for this document. If you notice any inaccuracies or broken instructions, click <strong className="text-slate-700">"Report an Issue"</strong> above!
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Discussion & Comments Stream */}
               <div className="space-y-4 pt-4 border-t border-slate-100">
                 <div className="flex items-center justify-between">
@@ -1764,6 +2084,138 @@ export function KnowledgeBase() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Report an Issue Modal */}
+      {reportModalOpen && activeItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-100 text-amber-800">
+                  <AlertTriangle className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Report Document Issue</h3>
+                  <p className="text-xs text-slate-500">
+                    Notify the author to correct an error or outdated instruction
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleCloseReportModal}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitReport} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">Issue Category</label>
+                <select
+                  value={reportCategory}
+                  onChange={(e) => setReportCategory(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                >
+                  <option value="Bug / Syntax Error">Bug / Syntax Error (Code won't execute or has syntax flaws)</option>
+                  <option value="Outdated Command / Flag">Outdated Command / Flag (Deprecated CLI flags or versions)</option>
+                  <option value="Inaccurate Step / Prerequisite">Inaccurate Step / Prerequisite (Missing dependency or misleading instruction)</option>
+                  <option value="Broken Link / Missing Asset">Broken Link / Missing Asset (Dead URL, repository or resource link)</option>
+                  <option value="Safety Hazard / Hardware Risk">Safety Hazard / Hardware Risk (Dangerous pinout, overvoltage, lab hazard)</option>
+                  <option value="Other">Other Document Flaw</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Issue Summary / Title <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Command fails with ModuleNotFoundError: torch in section 2"
+                  value={reportTitle}
+                  onChange={(e) => setReportTitle(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Detailed Explanation & Steps to Reproduce <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Explain exactly what went wrong when following the document instructions..."
+                  value={reportDescription}
+                  onChange={(e) => setReportDescription(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500 focus:outline-none leading-relaxed"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Suggested Fix or Replacement Code <span className="text-slate-400 font-normal">(Optional)</span>
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. pip3 install torch --index-url https://download.pytorch.org/whl/cu121"
+                  value={suggestedFix}
+                  onChange={(e) => setSuggestedFix(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none leading-relaxed"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 flex items-start gap-2 text-amber-900">
+                <Sparkles className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <p className="text-[11px] leading-relaxed">
+                  <strong>Peer Quality Bounty:</strong> Once the author verifies and resolves your reported issue, you will be awarded <strong>+10 KnowPoints</strong> to your campus ranking profile!
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCloseReportModal}
+                  disabled={submittingReport}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  disabled={submittingReport}
+                  className="bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-1.5"
+                >
+                  {submittingReport ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Submitting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Submit Report</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Report Notification Toast */}
+      {reportToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-2.5 text-xs animate-in slide-in-from-bottom-5">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+          <span>{reportToast}</span>
         </div>
       )}
     </div>

@@ -1,4 +1,5 @@
 import api from './api';
+import { pushCampusNotification } from './notificationService';
 
 export const SAMPLE_USERS = [
   {
@@ -620,6 +621,115 @@ const deleteLocalComment = (entryId, commentId) => {
   }
 };
 
+// ==========================================
+// PEER ISSUE REPORTS & BUG TRACKING ENGINE
+// ==========================================
+const INITIAL_SAMPLE_REPORTS = {
+  'kb_01': [
+    {
+      id: 'rep_01',
+      entryId: 'kb_01',
+      reporterName: 'Aarav Patel',
+      reporterEmail: 'aarav.patel@campus.edu',
+      reporterRole: 'STUDENT',
+      category: 'Outdated Command / Flag',
+      title: 'CUDA 12.1 pip install requires explicit --index-url flag',
+      description: 'Running the torch install command on newer Ubuntu 22.04 LTS environments fails with "No matching distribution found for torch". It requires the explicit PyTorch cu121 index-url.',
+      suggestedFix: 'Update command to: pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu121',
+      status: 'RESOLVED',
+      createdAt: '2026-09-08T10:15:00.000Z',
+      resolvedBy: 'Vikram Malhotra',
+      resolvedAt: '2026-09-08T14:30:00.000Z',
+      resolutionNote: 'Fixed in Section 2! Added the explicit --index-url flag for CUDA 12.1 compatibility. Thank you for catching this!',
+    },
+    {
+      id: 'rep_02',
+      entryId: 'kb_01',
+      reporterName: 'Priya Sharma',
+      reporterEmail: 'priya.sharma@campus.edu',
+      reporterRole: 'STUDENT',
+      category: 'Bug / Syntax Error',
+      title: 'Docker daemon permission denied during multi-GPU container launch',
+      description: 'In step 3, launching docker without sudo or user group configuration throws permission denied on /var/run/docker.sock.',
+      suggestedFix: 'Add prerequisite note: "sudo usermod -aG docker $USER" followed by shell re-login.',
+      status: 'OPEN',
+      createdAt: '2026-09-10T16:45:00.000Z',
+    },
+  ],
+  'kb_02': [
+    {
+      id: 'rep_03',
+      entryId: 'kb_02',
+      reporterName: 'Rohan Verma',
+      reporterEmail: 'rohan.verma@campus.edu',
+      reporterRole: 'STUDENT',
+      category: 'Inaccurate Step / Prerequisite',
+      title: 'Missing environment variable in Redis cluster compose file',
+      description: 'The docker-compose file misses ALLOW_EMPTY_PASSWORD=yes causing container restart loops on local dev machines.',
+      suggestedFix: 'Set ALLOW_EMPTY_PASSWORD: "yes" in environment section.',
+      status: 'RESOLVED',
+      createdAt: '2026-09-09T11:00:00.000Z',
+      resolvedBy: 'Alex Chen',
+      resolvedAt: '2026-09-09T13:20:00.000Z',
+      resolutionNote: 'Great catch! Added ALLOW_EMPTY_PASSWORD: "yes" for local testing mode.',
+    },
+  ],
+};
+
+export const getLocalReports = (entryId) => {
+  try {
+    const raw = localStorage.getItem(`knowpass_reports_${entryId}`);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return INITIAL_SAMPLE_REPORTS[entryId] || [];
+};
+
+export const saveLocalReport = (entryId, report) => {
+  try {
+    const list = getLocalReports(entryId);
+    const updated = [report, ...list];
+    localStorage.setItem(`knowpass_reports_${entryId}`, JSON.stringify(updated));
+    return updated;
+  } catch (e) {
+    console.warn('Error saving local report:', e);
+    return [];
+  }
+};
+
+export const resolveLocalReport = (entryId, reportId, resolutionNote, resolverName) => {
+  try {
+    const list = getLocalReports(entryId);
+    const updated = list.map((rep) =>
+      rep.id === reportId
+        ? {
+            ...rep,
+            status: 'RESOLVED',
+            resolvedBy: resolverName || 'Author',
+            resolvedAt: new Date().toISOString(),
+            resolutionNote: resolutionNote || 'Resolved and updated in document content.',
+          }
+        : rep
+    );
+    localStorage.setItem(`knowpass_reports_${entryId}`, JSON.stringify(updated));
+    return updated;
+  } catch (e) {
+    console.warn('Error resolving report:', e);
+    return [];
+  }
+};
+
+export const deleteLocalReport = (entryId, reportId) => {
+  try {
+    const list = getLocalReports(entryId);
+    const updated = list.filter((r) => r.id !== reportId);
+    localStorage.setItem(`knowpass_reports_${entryId}`, JSON.stringify(updated));
+    return updated;
+  } catch (e) {
+    console.warn('Error deleting report:', e);
+    return [];
+  }
+};
+
 // Tag and resource parsing helpers ensuring zero crashes on malformed or stringified database entries
 export const ensureArrayTags = (tags) => {
   if (Array.isArray(tags)) return tags;
@@ -774,6 +884,7 @@ export const knowledgeService = {
                 content: d.content || '',
                 resources: parseResources(d.resources),
                 comments: getLocalComments(d.id),
+                reports: getLocalReports(d.id),
               };
             });
 
@@ -788,6 +899,7 @@ export const knowledgeService = {
                   resources: parseResources(lc.resources),
                   upvotes: upvotesCache[lc.id] !== undefined ? Math.max(lc.upvotes || 0, upvotesCache[lc.id]) : (lc.upvotes || 0),
                   comments: [...(lc.comments || []), ...getLocalComments(lc.id)],
+                  reports: getLocalReports(lc.id),
                 });
               }
             });
@@ -829,6 +941,7 @@ export const knowledgeService = {
         resources: parseResources(item.resources),
         upvotes: upvotesCache[item.id] !== undefined ? Math.max(item.upvotes || 0, upvotesCache[item.id]) : (item.upvotes || 0),
         comments: [...(item.comments || []), ...getLocalComments(item.id)],
+        reports: getLocalReports(item.id),
       }));
       
       if (params.category && params.category !== 'All') {
@@ -901,6 +1014,7 @@ export const knowledgeService = {
             content: data.content,
             resources: data.resources || { files: [] },
             comments: getLocalComments(data.id),
+            reports: getLocalReports(data.id),
           };
           return syncAuthorProfileOnItem(rawItem, currentUser, aliases, myContribIds);
         }
@@ -911,13 +1025,18 @@ export const knowledgeService = {
 
     try {
       const response = await api.get(`/knowledge/${id}`);
-      return syncAuthorProfileOnItem(response.data, currentUser, aliases, myContribIds);
+      const item = {
+        ...response.data,
+        reports: getLocalReports(id),
+      };
+      return syncAuthorProfileOnItem(item, currentUser, aliases, myContribIds);
     } catch {
       const base = SAMPLE_KNOWLEDGE_ITEMS.find((item) => item.id === id) || SAMPLE_KNOWLEDGE_ITEMS[0];
       const result = {
         ...base,
         upvotes: upvotesCache[base.id] !== undefined ? Math.max(base.upvotes, upvotesCache[base.id]) : base.upvotes,
         comments: [...(base.comments || []), ...getLocalComments(base.id)],
+        reports: getLocalReports(base.id),
       };
       return syncAuthorProfileOnItem(result, currentUser, aliases, myContribIds);
     }
@@ -1363,4 +1482,74 @@ export const knowledgeService = {
     }
     return true;
   },
+
+  // -------------------------------------------------------------
+  // ISSUE REPORTING & RESOLUTION METHODS
+  // -------------------------------------------------------------
+  getReports: async (entryId) => {
+    return getLocalReports(entryId);
+  },
+
+  addReport: async (entryId, reportData) => {
+    const newReport = {
+      id: `rep_${Date.now()}`,
+      entryId,
+      reporterName: reportData.reporterName || 'Anonymous Student',
+      reporterEmail: reportData.reporterEmail || '',
+      reporterRole: reportData.reporterRole || 'STUDENT',
+      category: reportData.category || 'Bug / Syntax Error',
+      title: reportData.title || '',
+      description: reportData.description || '',
+      suggestedFix: reportData.suggestedFix || '',
+      status: 'OPEN',
+      createdAt: new Date().toISOString(),
+    };
+
+    const updated = saveLocalReport(entryId, newReport);
+
+    // Notify author if available
+    if (reportData.authorEmail && reportData.authorEmail !== reportData.reporterEmail) {
+      try {
+        pushCampusNotification({
+          userId: reportData.authorEmail,
+          title: `New Issue Reported: "${newReport.title}"`,
+          message: `${newReport.reporterName} reported an issue on your document "${reportData.entryTitle || 'Knowledge Entry'}".`,
+          type: 'DOCUMENT_ISSUE_REPORTED',
+          actionUrl: `/knowledge?doc=${entryId}`,
+        });
+      } catch (err) {
+        console.warn('Could not send notification:', err);
+      }
+    }
+
+    return { report: newReport, allReports: updated };
+  },
+
+  resolveReport: async (entryId, reportId, resolutionNote, resolverName, entryTitle) => {
+    const updated = resolveLocalReport(entryId, reportId, resolutionNote, resolverName);
+    const resolvedReport = updated.find((r) => r.id === reportId);
+
+    // Notify reporter that their issue has been addressed & reward KnowPoints
+    if (resolvedReport && resolvedReport.reporterEmail) {
+      try {
+        pushCampusNotification({
+          userId: resolvedReport.reporterEmail,
+          title: `Issue Resolved: "${resolvedReport.title}"`,
+          message: `${resolverName || 'The author'} resolved your reported issue on "${entryTitle || 'Document'}". You earned +10 KnowPoints Bug Bounty!`,
+          type: 'ISSUE_RESOLVED',
+          actionUrl: `/knowledge?doc=${entryId}`,
+        });
+      } catch (err) {
+        console.warn('Could not send resolution notification:', err);
+      }
+    }
+
+    return { resolvedReport, allReports: updated };
+  },
+
+  deleteReport: async (entryId, reportId) => {
+    const updated = deleteLocalReport(entryId, reportId);
+    return { allReports: updated };
+  },
 };
+
