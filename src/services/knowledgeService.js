@@ -523,6 +523,26 @@ const saveLocalComment = (entryId, comment) => {
   }
 };
 
+const updateLocalComment = (entryId, commentId, newText) => {
+  try {
+    const list = getLocalComments(entryId);
+    const updated = list.map((c) => (c.id === commentId ? { ...c, text: newText, isEdited: true } : c));
+    localStorage.setItem(`knowpass_comments_${entryId}`, JSON.stringify(updated));
+  } catch (e) {
+    console.warn('Error updating local comment:', e);
+  }
+};
+
+const deleteLocalComment = (entryId, commentId) => {
+  try {
+    const list = getLocalComments(entryId);
+    const updated = list.filter((c) => c.id !== commentId);
+    localStorage.setItem(`knowpass_comments_${entryId}`, JSON.stringify(updated));
+  } catch (e) {
+    console.warn('Error deleting local comment:', e);
+  }
+};
+
 // Tag and resource parsing helpers ensuring zero crashes on malformed or stringified database entries
 export const ensureArrayTags = (tags) => {
   if (Array.isArray(tags)) return tags;
@@ -950,8 +970,9 @@ export const knowledgeService = {
 
   addComment: async (entryId, commentData) => {
     const newComment = {
-      id: `c_${Date.now()}`,
+      id: `c_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       user: commentData.user || 'Campus Member',
+      userEmail: commentData.userEmail || '',
       role: commentData.role || 'STUDENT',
       text: commentData.text,
       time: 'Just now',
@@ -982,6 +1003,52 @@ export const knowledgeService = {
     }
 
     return newComment;
+  },
+
+  editComment: async (entryId, commentId, updatedText) => {
+    updateLocalComment(entryId, commentId, updatedText);
+
+    // Update in-memory sample item
+    const entry = SAMPLE_KNOWLEDGE_ITEMS.find((it) => it.id === entryId);
+    if (entry && Array.isArray(entry.comments)) {
+      entry.comments = entry.comments.map((c) =>
+        c.id === commentId ? { ...c, text: updatedText, isEdited: true } : c
+      );
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase
+          .from('entry_comments')
+          .update({ text: updatedText })
+          .eq('id', commentId);
+      } catch (err) {
+        console.warn('[knowledgeService] Supabase editComment error:', err.message);
+      }
+    }
+    return true;
+  },
+
+  deleteComment: async (entryId, commentId) => {
+    deleteLocalComment(entryId, commentId);
+
+    // Remove from in-memory sample item
+    const entry = SAMPLE_KNOWLEDGE_ITEMS.find((it) => it.id === entryId);
+    if (entry && Array.isArray(entry.comments)) {
+      entry.comments = entry.comments.filter((c) => c.id !== commentId);
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase
+          .from('entry_comments')
+          .delete()
+          .eq('id', commentId);
+      } catch (err) {
+        console.warn('[knowledgeService] Supabase deleteComment error:', err.message);
+      }
+    }
+    return true;
   },
 
   update: async (id, updateData) => {

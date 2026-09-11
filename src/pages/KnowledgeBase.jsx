@@ -132,6 +132,8 @@ export function KnowledgeBase() {
   // Modal State
   const [activeItem, setActiveItem] = useState(null);
   const [newCommentText, setNewCommentText] = useState('');
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
   const [shareToast, setShareToast] = useState(false);
 
   // Author Edit Modal State
@@ -152,6 +154,44 @@ export function KnowledgeBase() {
     if (role === ROLES.ADMIN) return true;
     if (user?.name && item.author && item.author.trim().toLowerCase() === user.name.trim().toLowerCase()) return true;
     if (user?.email && item.authorEmail && item.authorEmail.trim().toLowerCase() === user.email.trim().toLowerCase()) return true;
+    return false;
+  };
+
+  // Comment Access Control:
+  // - Edit: ONLY the author of the comment
+  // - Delete/Remove: The comment author OR the author of this contribution OR an admin
+  const isCommentAuthor = (comm) => {
+    if (!comm || !user) return false;
+    const currentName = (user.name || '').trim().toLowerCase();
+    const currentUserEmail = (user.email || '').trim().toLowerCase();
+    const commUser = (comm.user || '').trim().toLowerCase();
+    const commEmail = (comm.userEmail || '').trim().toLowerCase();
+
+    if (currentUserEmail && commEmail && currentUserEmail === commEmail) return true;
+    if (currentName && commUser && currentName === commUser) return true;
+    return false;
+  };
+
+  const isContributionAuthor = (item) => {
+    if (!item || !user) return false;
+    const currentName = (user.name || '').trim().toLowerCase();
+    const currentUserEmail = (user.email || '').trim().toLowerCase();
+    const authorName = (item.author || '').trim().toLowerCase();
+    const authorEmail = (item.authorEmail || '').trim().toLowerCase();
+
+    if (currentUserEmail && authorEmail && currentUserEmail === authorEmail) return true;
+    if (currentName && authorName && currentName === authorName) return true;
+    return false;
+  };
+
+  const canEditComment = (comm) => {
+    return isCommentAuthor(comm);
+  };
+
+  const canDeleteComment = (comm) => {
+    if (role === ROLES.ADMIN) return true;
+    if (isCommentAuthor(comm)) return true;
+    if (isContributionAuthor(activeItem)) return true;
     return false;
   };
 
@@ -414,6 +454,7 @@ export function KnowledgeBase() {
 
     const savedComment = await knowledgeService.addComment(activeItem.id, {
       user: user?.name || 'Campus Scholar',
+      userEmail: user?.email || '',
       role: role || ROLES.STUDENT,
       text: textToSubmit,
     });
@@ -426,6 +467,57 @@ export function KnowledgeBase() {
       )
     );
 
+    setActiveItem((prev) => ({ ...prev, comments: updatedComments }));
+  };
+
+  // Comment Edit & Delete Handlers
+  const handleStartEditComment = (comm) => {
+    if (!canEditComment(comm)) return;
+    setEditingCommentId(comm.id);
+    setEditingCommentText(comm.text || '');
+  };
+
+  const handleCancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditingCommentText('');
+  };
+
+  const handleSaveEditComment = async (commId) => {
+    if (!editingCommentText.trim() || !activeItem) return;
+    const trimmed = editingCommentText.trim();
+
+    await knowledgeService.editComment(activeItem.id, commId, trimmed);
+
+    const updatedComments = (activeItem.comments || []).map((c) =>
+      c.id === commId ? { ...c, text: trimmed, isEdited: true } : c
+    );
+
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === activeItem.id ? { ...item, comments: updatedComments } : item
+      )
+    );
+    setActiveItem((prev) => ({ ...prev, comments: updatedComments }));
+    setEditingCommentId(null);
+    setEditingCommentText('');
+  };
+
+  const handleDeleteComment = async (commId) => {
+    const targetComm = (activeItem.comments || []).find((c) => c.id === commId);
+    if (!canDeleteComment(targetComm)) return;
+
+    if (!window.confirm('Are you sure you want to remove this comment?')) return;
+    if (!activeItem) return;
+
+    await knowledgeService.deleteComment(activeItem.id, commId);
+
+    const updatedComments = (activeItem.comments || []).filter((c) => c.id !== commId);
+
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === activeItem.id ? { ...item, comments: updatedComments } : item
+      )
+    );
     setActiveItem((prev) => ({ ...prev, comments: updatedComments }));
   };
 
@@ -1300,23 +1392,92 @@ export function KnowledgeBase() {
 
                 <div className="space-y-2.5">
                   {Array.isArray(activeItem.comments) && activeItem.comments.length > 0 ? (
-                    activeItem.comments.map((comm) => (
-                      <div
-                        key={comm.id}
-                        className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs"
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-slate-900">
-                            {comm.user}{' '}
-                            <span className="text-[10px] text-indigo-600 font-semibold">
-                              ({comm.role})
-                            </span>
-                          </span>
-                          <span className="text-[10px] text-slate-400">{comm.time}</span>
+                    activeItem.comments.map((comm) => {
+                      const canEdit = canEditComment(comm);
+                      const canDelete = canDeleteComment(comm);
+                      const isEditing = editingCommentId === comm.id;
+
+                      return (
+                        <div
+                          key={comm.id}
+                          className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs transition"
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-slate-900">
+                                {comm.user}
+                              </span>
+                              <span className="text-[10px] text-indigo-600 font-semibold">
+                                ({comm.role})
+                              </span>
+                              {comm.isEdited && (
+                                <span className="text-[10px] text-slate-400 italic font-normal">
+                                  (edited)
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-slate-400">{comm.time}</span>
+                              {!isEditing && (canEdit || canDelete) && (
+                                <div className="flex items-center gap-1 ml-1 pl-1.5 border-l border-slate-200">
+                                  {canEdit && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleStartEditComment(comm)}
+                                      title="Edit your comment"
+                                      className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-slate-200/60 rounded transition"
+                                    >
+                                      <Edit3 className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                  {canDelete && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteComment(comm.id)}
+                                      title={canEdit ? "Delete your comment" : "Remove comment on your contribution"}
+                                      className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {isEditing ? (
+                            <div className="mt-2 space-y-2">
+                              <textarea
+                                value={editingCommentText}
+                                onChange={(e) => setEditingCommentText(e.target.value)}
+                                className="w-full text-xs p-2.5 bg-white border border-indigo-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none text-slate-700"
+                                rows={2}
+                                autoFocus
+                              />
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={handleCancelEditComment}
+                                  className="px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-200 rounded-md transition"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveEditComment(comm.id)}
+                                  disabled={!editingCommentText.trim()}
+                                  className="px-2.5 py-1 text-[11px] font-semibold bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 transition flex items-center gap-1"
+                                >
+                                  <Save className="w-3 h-3" /> Save
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-slate-600 whitespace-pre-wrap">{comm.text}</p>
+                          )}
                         </div>
-                        <p className="text-slate-600">{comm.text}</p>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <p className="text-xs text-slate-400 italic">
                       No questions yet. Be the first to ask!
