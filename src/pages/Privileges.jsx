@@ -31,7 +31,7 @@ const STUDENT_PRIVILEGES = [
     badgeBg: 'bg-indigo-600 text-white',
     ring: 'ring-indigo-100 border-indigo-200',
     problem: 'Juniors message hundreds of alumni on LinkedIn: "Hi sir, please refer me", and 99% get ignored.',
-    solution: 'When a junior earns enough leaderboard points (by solving bugs in old guides, posting fresh lab tips, or getting upvotes), they unlock a Referral Request Token. This token allows them to request a direct, guaranteed Resume Review or Referral from a top-ranked passed-out alumnus working at their dream company.',
+    solution: 'When a junior earns enough leaderboard points (by solving bugs in old guides, posting fresh lab tips, or getting upvotes), they unlock a Referral Request Token. This token allows them to request a direct, guaranteed Resume Review or Referral from a top-ranked alumnus working at their dream company.',
     trustFactor: 'The senior knows this junior earned their way to the top of the leaderboard and isn\'t just a copy-paste spammer.',
   },
   {
@@ -102,7 +102,7 @@ export function Privileges() {
               {isStudent
                 ? 'Junior Student Privileges & Career Unlocks'
                 : isAlumni
-                ? 'Passed-Out Alumni Privileges & Referral Pipeline'
+                ? 'Alumni Privileges & Referral Pipeline'
                 : 'Institutional Privileges & Referral Pipeline'}
             </h1>
           </div>
@@ -118,7 +118,7 @@ export function Privileges() {
         {/* Current profile indicator */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-indigo-50 border border-indigo-200/80 text-xs font-bold text-indigo-800 self-start sm:self-auto">
           <ShieldCheck className="w-4 h-4 text-indigo-600" />
-          <span>Profile: {role === ROLES.ALUMNI ? 'Passed-Out Alumni' : 'Junior Student'}</span>
+          <span>Profile: {role === ROLES.ALUMNI ? 'Alumni' : 'Junior Student'}</span>
         </div>
       </div>
 
@@ -143,7 +143,7 @@ export function Privileges() {
             </div>
           )}
 
-          {/* Passed-Out Alumni Tab (visible ONLY to Alumni or Admin) */}
+          {/* Alumni Tab (visible ONLY to Alumni or Admin) */}
           {(isAlumni || isAdmin) && (
             <div
               className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-2 ${
@@ -154,7 +154,7 @@ export function Privileges() {
               onClick={() => isAdmin && setActiveTab('alumni')}
             >
               <Briefcase className="w-4 h-4" />
-              <span>💼 Passed-Out Alumni Mentors</span>
+              <span>💼 Alumni Mentors</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800">
                 Referral Pipeline
               </span>
@@ -182,7 +182,7 @@ export function Privileges() {
           </p>
         ) : (
           <p>
-            💼 <strong>Passed-Out Alumni Track:</strong> No college ID required—uses personal or corporate email. Alumni unlock direct <strong>Corporate Referral Bonus Pipelines (₹30k–₹1.5L)</strong> with first-look access to vetted junior talent, plus <strong>Official Convocation Citations & VIP Campus Privileges</strong>.
+            💼 <strong>Alumni Track:</strong> No college ID required—uses personal or corporate email. Alumni unlock direct <strong>Corporate Referral Bonus Pipelines (₹30k–₹1.5L)</strong> with first-look access to vetted junior talent, plus <strong>Official Convocation Citations & VIP Campus Privileges</strong>.
           </p>
         )}
       </div>
@@ -195,7 +195,7 @@ export function Privileges() {
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-500" />
             <h2 className="text-lg font-black text-slate-900">
-              {activeTab === 'students' ? '🎓 Junior Student Unlocks & Career Privileges' : '💼 Passed-Out Alumni Privileges & Referral Pipeline'}
+              {activeTab === 'students' ? '🎓 Junior Student Unlocks & Career Privileges' : '💼 Alumni Privileges & Referral Pipeline'}
             </h2>
           </div>
           <span className="text-[11px] font-bold text-slate-400">

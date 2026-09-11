@@ -356,7 +356,7 @@ export function Register() {
               <div className="grid grid-cols-3 gap-2.5">
                 {[
                   { role: ROLES.STUDENT, label: '🎓 Junior Student', desc: 'Current 1st–4th Year' },
-                  { role: ROLES.ALUMNI, label: '💼 Passed-Out Alumni', desc: 'Graduated / Working Pro' },
+                  { role: ROLES.ALUMNI, label: '💼 Alumni', desc: 'Graduated / Working Pro' },
                   { role: ROLES.FACULTY, label: '🏛️ Faculty', desc: 'Academic verifier' },
                 ].map((item) => {
                   const isSelected = formData.role === item.role;
@@ -429,7 +429,7 @@ export function Register() {
                 </div>
               )}
 
-              {/* Conditional: Passed-Out Alumni (Graduation Year) */}
+              {/* Conditional: Alumni (Graduation Year) */}
               {formData.role === ROLES.ALUMNI && (
                 <div className="animate-in fade-in zoom-in-95 duration-200">
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">

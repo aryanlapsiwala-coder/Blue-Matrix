@@ -19,7 +19,7 @@ export const ROLE_CONFIG = {
     color: 'blue',
   },
   [ROLES.ALUMNI]: {
-    label: 'Passed-Out Alumni',
+    label: 'Alumni',
     description: 'Graduated senior / industry working pro. Mentors juniors, authors production playbooks, and offers job referrals.',
     badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
     color: 'emerald',

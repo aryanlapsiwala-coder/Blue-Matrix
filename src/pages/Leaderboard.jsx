@@ -62,7 +62,7 @@ const STUDENT_PERK_TIERS = [
     badgeBg: 'bg-indigo-600 text-white',
     ring: 'ring-indigo-100 border-indigo-200',
     problem: 'Juniors message hundreds of alumni on LinkedIn: "Hi sir, please refer me", and 99% get ignored.',
-    solution: 'When a junior earns enough leaderboard points (by solving bugs in old guides, posting fresh lab tips, or getting upvotes), they unlock a Referral Request Token. This token allows them to request a direct, guaranteed Resume Review or Referral from a top-ranked passed-out alumnus working at their dream company.',
+    solution: 'When a junior earns enough leaderboard points (by solving bugs in old guides, posting fresh lab tips, or getting upvotes), they unlock a Referral Request Token. This token allows them to request a direct, guaranteed Resume Review or Referral from a top-ranked alumnus working at their dream company.',
     trustFactor: 'The senior knows this junior earned their way to the top of the leaderboard and isn\'t just a copy-paste spammer.',
   },
   {
@@ -194,7 +194,7 @@ const STUDENT_CONTRIBUTORS = [
 ];
 
 // ==========================================
-// 2. DATASETS FOR PASSED-OUT ALUMNI MENTORS
+// 2. DATASETS FOR ALUMNI MENTORS
 // ==========================================
 
 const ALUMNI_POINT_RULES = [
@@ -547,7 +547,7 @@ export function Leaderboard() {
             Campus Recognition & Impact Hub
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
-            Fair, segregated rankings for <strong>Current Junior Students</strong> and <strong>Passed-Out Working Alumni</strong> with tailored real-world rewards
+            Fair, segregated rankings for <strong>Current Junior Students</strong> and <strong>Alumni</strong> with tailored real-world rewards
           </p>
         </div>
 
@@ -615,7 +615,7 @@ export function Leaderboard() {
               </button>
             )}
 
-            {/* Passed-Out Alumni Tab (visible ONLY to Alumni or Admin) */}
+            {/* Alumni Tab (visible ONLY to Alumni or Admin) */}
             {(isAlumni || isAdmin) && (
               <button
                 onClick={() => setActiveBoard('alumni')}
@@ -626,7 +626,7 @@ export function Leaderboard() {
                 }`}
               >
                 <Briefcase className="w-4 h-4" />
-                <span>💼 Passed-Out Alumni Mentors</span>
+                <span>💼 Alumni Mentors</span>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                   activeBoard === 'alumni' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
                 }`}>
@@ -639,7 +639,7 @@ export function Leaderboard() {
           <div className="text-xs font-semibold text-slate-500 flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
             <span>
-              {isStudent ? 'Exclusive Junior Studying Students Standings' : isAlumni ? 'Exclusive Passed-Out Alumni Mentors Standings' : 'Points partition guarantees 100% fair evaluation'}
+              {isStudent ? 'Exclusive Junior Studying Students Standings' : isAlumni ? 'Exclusive Alumni Mentors Standings' : 'Points partition guarantees 100% fair evaluation'}
             </span>
           </div>
         </div>
@@ -656,7 +656,7 @@ export function Leaderboard() {
             </p>
           ) : (
             <p>
-              💼 <strong>Passed-Out Alumni Track:</strong> No college ID needed—uses personal/work email. Points earned from publishing production playbooks, system design architectures, and junior mentorship unlock <strong>Lifetime IEEE/ACM Library Proxy Passes</strong>, <strong>Talent Scout referral bonuses</strong>, and <strong>Convocation citations</strong>.
+              💼 <strong>Alumni Track:</strong> No college ID needed—uses personal/work email. Points earned from publishing production playbooks, system design architectures, and junior mentorship unlock <strong>Lifetime IEEE/ACM Library Proxy Passes</strong>, <strong>Talent Scout referral bonuses</strong>, and <strong>Convocation citations</strong>.
             </p>
           )}
         </div>
@@ -847,7 +847,7 @@ export function Leaderboard() {
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-amber-500" />
             <h3 className="font-bold text-sm text-slate-900">
-              {activeBoard === 'students' ? 'How Current Students Earn KnowPoints' : 'How Passed-Out Alumni Earn Impact Points'}
+              {activeBoard === 'students' ? 'How Current Students Earn KnowPoints' : 'How Alumni Earn Impact Points'}
             </h3>
           </div>
           <span className="text-[11px] font-bold text-slate-400">Rules & Point Mechanics</span>
@@ -881,7 +881,7 @@ export function Leaderboard() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-black text-slate-900">
-              {activeBoard === 'students' ? '🎓 Junior Student Rankings Table' : '💼 Passed-Out Alumni Mentors Table'}
+              {activeBoard === 'students' ? '🎓 Junior Student Rankings Table' : '💼 Alumni Mentors Table'}
             </h2>
             <p className="text-xs text-slate-500">
               {activeBoard === 'students'

@@ -803,7 +803,7 @@ International Higher Education Knowledge Alliance
       <Card className="overflow-hidden border border-slate-200 shadow-sm">
         {role === ROLES.ALUMNI ? (
           // ==========================================
-          // PASSED-OUT ALUMNI MENTOR PROFILE VIEW
+          // ALUMNI MENTOR PROFILE VIEW
           // ==========================================
           <>
             <div className="p-5 sm:p-6 bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -811,7 +811,7 @@ International Higher Education Knowledge Alliance
                 <div className="flex items-center gap-2">
                   <Briefcase className="w-5 h-5 text-emerald-400" />
                   <h3 className="text-base font-extrabold text-white">
-                    💼 Passed-Out Alumni Mentor Privileges & Referral Pipeline
+                    💼 Alumni Mentor Privileges & Referral Pipeline
                   </h3>
                   <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-0.5 rounded-full">
                     Industry Track

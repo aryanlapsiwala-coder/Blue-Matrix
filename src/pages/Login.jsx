@@ -170,7 +170,7 @@ export function Login() {
             <div className="grid grid-cols-2 gap-2">
               {[
                 { role: ROLES.STUDENT, label: '🎓 Junior Student' },
-                { role: ROLES.ALUMNI, label: '💼 Passed-Out Alumni' },
+                { role: ROLES.ALUMNI, label: '💼 Alumni' },
                 { role: ROLES.FACULTY, label: '🏛️ Faculty' },
                 { role: ROLES.ADMIN, label: '🛡️ Administrator' },
               ].map((item) => {
@@ -319,7 +319,7 @@ export function Login() {
                 onClick={() => handleQuickDemoLogin(ROLES.ALUMNI)}
                 className="px-2 py-2 text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl font-semibold transition flex items-center justify-center gap-1.5"
               >
-                <span>💼 Passed-Out Alumni</span>
+                <span>💼 Alumni</span>
               </button>
               <button
                 type="button"
