@@ -556,11 +556,48 @@ const getLocalCustomEntries = () => {
   }
 };
 
+const getDeletedEntryIds = () => {
+  try {
+    const raw = localStorage.getItem('knowpass_deleted_entries');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const markEntryDeleted = (id) => {
+  if (!id) return;
+  try {
+    const list = getDeletedEntryIds();
+    if (!list.includes(id)) {
+      list.push(id);
+      localStorage.setItem('knowpass_deleted_entries', JSON.stringify(list));
+    }
+  } catch (e) {
+    console.warn('Error saving deleted entry id:', e);
+  }
+};
+
+const removeLocalCustomEntry = (id) => {
+  if (!id) return;
+  try {
+    const list = getLocalCustomEntries();
+    const updated = list.filter((it) => it.id !== id);
+    localStorage.setItem('knowpass_custom_entries', JSON.stringify(updated));
+  } catch (e) {
+    console.warn('Error removing custom entry:', e);
+  }
+};
+
 const saveLocalCustomEntry = (entry) => {
   try {
     const list = getLocalCustomEntries();
     const updated = [entry, ...list.filter((it) => it.id !== entry.id)];
     localStorage.setItem('knowpass_custom_entries', JSON.stringify(updated));
+
+    // Remove from deleted list if re-added
+    const deleted = getDeletedEntryIds().filter((d) => d !== entry.id);
+    localStorage.setItem('knowpass_deleted_entries', JSON.stringify(deleted));
   } catch (e) {
     console.warn('Error caching custom entry:', e);
   }
@@ -570,6 +607,7 @@ export const knowledgeService = {
   getAll: async (params = {}) => {
     const upvotesCache = getLocalUpvotes();
     const localCustom = getLocalCustomEntries();
+    const deletedIds = getDeletedEntryIds();
 
     // 1. If Supabase is configured, fetch live rows from PostgreSQL
     if (isSupabaseConfigured && supabase) {
@@ -591,45 +629,49 @@ export const knowledgeService = {
 
         const { data, error } = await query;
         if (!error && data) {
-          const mapped = data.map((d) => {
-            const effectiveUpvotes = upvotesCache[d.id] !== undefined ? Math.max(d.upvotes || 0, upvotesCache[d.id]) : (d.upvotes || 0);
-            return {
-              id: d.id,
-              title: d.title || 'Untitled Knowledge Entry',
-              category: d.category || d.knowledge_type || 'Project Experience',
-              knowledgeType: d.knowledge_type || d.category || 'Project Experience',
-              department: d.department || 'Computer Science & Engineering (CSE)',
-              yearOfStudy: d.year_of_study || 'All Levels',
-              rating: Number(d.rating) || 5.0,
-              author: d.author_name || 'Campus Scholar',
-              authorRole: d.author_role || 'STUDENT',
-              authorAvatar: d.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-              createdAt: d.created_at || new Date().toISOString(),
-              views: d.views || 1,
-              upvotes: effectiveUpvotes,
-              isTrending: effectiveUpvotes > 100,
-              isVerified: Boolean(d.is_verified),
-              verifiedBy: d.verified_by,
-              tags: ensureArrayTags(d.tags),
-              summary: d.summary || '',
-              content: d.content || '',
-              resources: parseResources(d.resources),
-              comments: getLocalComments(d.id),
-            };
-          });
+          const mapped = data
+            .filter((d) => !deletedIds.includes(d.id))
+            .map((d) => {
+              const effectiveUpvotes = upvotesCache[d.id] !== undefined ? Math.max(d.upvotes || 0, upvotesCache[d.id]) : (d.upvotes || 0);
+              return {
+                id: d.id,
+                title: d.title || 'Untitled Knowledge Entry',
+                category: d.category || d.knowledge_type || 'Project Experience',
+                knowledgeType: d.knowledge_type || d.category || 'Project Experience',
+                department: d.department || 'Computer Science & Engineering (CSE)',
+                yearOfStudy: d.year_of_study || 'All Levels',
+                rating: Number(d.rating) || 5.0,
+                author: d.author_name || 'Campus Scholar',
+                authorRole: d.author_role || 'STUDENT',
+                authorAvatar: d.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+                createdAt: d.created_at || new Date().toISOString(),
+                views: d.views || 1,
+                upvotes: effectiveUpvotes,
+                isTrending: effectiveUpvotes > 100,
+                isVerified: Boolean(d.is_verified),
+                verifiedBy: d.verified_by,
+                tags: ensureArrayTags(d.tags),
+                summary: d.summary || '',
+                content: d.content || '',
+                resources: parseResources(d.resources),
+                comments: getLocalComments(d.id),
+              };
+            });
 
-          // Merge any local custom entries that haven't synced yet
-          localCustom.forEach((lc) => {
-            if (!mapped.some((it) => it.id === lc.id || (it.title && it.title.trim() === lc.title?.trim()))) {
-              mapped.unshift({
-                ...lc,
-                tags: ensureArrayTags(lc.tags),
-                resources: parseResources(lc.resources),
-                upvotes: upvotesCache[lc.id] !== undefined ? Math.max(lc.upvotes || 0, upvotesCache[lc.id]) : (lc.upvotes || 0),
-                comments: [...(lc.comments || []), ...getLocalComments(lc.id)],
-              });
-            }
-          });
+          // Merge any local custom entries that haven't synced yet and aren't deleted
+          localCustom
+            .filter((lc) => !deletedIds.includes(lc.id))
+            .forEach((lc) => {
+              if (!mapped.some((it) => it.id === lc.id || (it.title && it.title.trim() === lc.title?.trim()))) {
+                mapped.unshift({
+                  ...lc,
+                  tags: ensureArrayTags(lc.tags),
+                  resources: parseResources(lc.resources),
+                  upvotes: upvotesCache[lc.id] !== undefined ? Math.max(lc.upvotes || 0, upvotesCache[lc.id]) : (lc.upvotes || 0),
+                  comments: [...(lc.comments || []), ...getLocalComments(lc.id)],
+                });
+              }
+            });
 
           return {
             items: mapped,
@@ -644,12 +686,13 @@ export const knowledgeService = {
     // 2. Standard in-memory fallback + Local Storage Cache
     try {
       const response = await api.get('/knowledge', { params });
-      return response.data;
+      const items = (response.data?.items || response.data || []).filter((it) => !deletedIds.includes(it.id));
+      return { items, total: items.length };
     } catch {
-      // Merge localCustom into fallback
-      const combined = [...localCustom];
+      // Merge localCustom into fallback (excluding deleted entries)
+      const combined = [...localCustom.filter((lc) => !deletedIds.includes(lc.id))];
       SAMPLE_KNOWLEDGE_ITEMS.forEach((it) => {
-        if (!combined.some((c) => c.id === it.id)) {
+        if (!deletedIds.includes(it.id) && !combined.some((c) => c.id === it.id)) {
           combined.push(it);
         }
       });
@@ -693,6 +736,10 @@ export const knowledgeService = {
   },
 
   getById: async (id) => {
+    const deletedIds = getDeletedEntryIds();
+    if (deletedIds.includes(id)) {
+      return null;
+    }
     const upvotesCache = getLocalUpvotes();
     if (isSupabaseConfigured && supabase) {
       try {
@@ -980,6 +1027,19 @@ export const knowledgeService = {
   },
 
   delete: async (id) => {
+    // 1. Remove from local storage custom entries cache
+    removeLocalCustomEntry(id);
+
+    // 2. Mark permanently deleted in persistent blocklist
+    markEntryDeleted(id);
+
+    // 3. Remove from in-memory SAMPLE_KNOWLEDGE_ITEMS array
+    const sampleIdx = SAMPLE_KNOWLEDGE_ITEMS.findIndex((it) => it.id === id);
+    if (sampleIdx !== -1) {
+      SAMPLE_KNOWLEDGE_ITEMS.splice(sampleIdx, 1);
+    }
+
+    // 4. Delete from Supabase PostgreSQL if configured
     if (isSupabaseConfigured && supabase) {
       try {
         await supabase.from('knowledge_entries').delete().eq('id', id);
@@ -989,6 +1049,7 @@ export const knowledgeService = {
       }
     }
 
+    // 5. Delete from mock API if available
     try {
       await api.delete(`/knowledge/${id}`);
     } catch {
