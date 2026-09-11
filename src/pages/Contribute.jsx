@@ -241,6 +241,14 @@ export function Contribute() {
     };
   }, []);
 
+  // Automatically connect stream to videoLiveRef as soon as recording starts
+  useEffect(() => {
+    if (isRecordingVideo && videoLiveRef.current && mediaStreamRef.current) {
+      videoLiveRef.current.srcObject = mediaStreamRef.current;
+      videoLiveRef.current.play().catch(() => {});
+    }
+  }, [isRecordingVideo]);
+
   const startWebcamRecording = async () => {
     setWebcamError(null);
     recordedChunksRef.current = [];
@@ -250,16 +258,16 @@ export function Contribute() {
         audio: true,
       });
       mediaStreamRef.current = stream;
-      if (videoLiveRef.current) {
-        videoLiveRef.current.srcObject = stream;
-        videoLiveRef.current.play().catch(() => {});
-      }
 
-      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-        ? 'video/webm;codecs=vp9'
-        : MediaRecorder.isTypeSupported('video/webm')
-        ? 'video/webm'
-        : 'video/mp4';
+      // Select best supported MIME type
+      let mimeType = 'video/webm';
+      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
+        mimeType = 'video/webm;codecs=vp8,opus';
+      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
+        mimeType = 'video/webm;codecs=vp9,opus';
+      } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+        mimeType = 'video/mp4';
+      }
 
       const recorder = new MediaRecorder(stream, { mimeType });
       recorder.ondataavailable = (event) => {
@@ -274,7 +282,7 @@ export function Contribute() {
         setRecordedVideoUrl(videoUrl);
         setVideoRecorded(true);
 
-        // Turn off camera tracks
+        // Turn off camera tracks immediately
         if (mediaStreamRef.current) {
           mediaStreamRef.current.getTracks().forEach((track) => track.stop());
           mediaStreamRef.current = null;
@@ -282,16 +290,14 @@ export function Contribute() {
       };
 
       mediaRecorderRef.current = recorder;
-      recorder.start(250); // collect 250ms chunks
+      recorder.start(500); // 500ms data slices ensure clean keyframes and seekability
       setIsRecordingVideo(true);
       setRecordTimer(0);
     } catch (err) {
       console.warn('Webcam permission denied or unavailable:', err);
       setWebcamError(
-        'Could not access camera/microphone. Please ensure permissions are granted in your browser.'
+        'Could not access camera/microphone. Please ensure permissions are allowed in your browser settings.'
       );
-      // Graceful fallback simulation if physical camera is blocked/denied
-      setIsRecordingVideo(true);
     }
   };
 
@@ -300,8 +306,6 @@ export function Contribute() {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     } else {
-      // Fallback if hardware recorder was inactive
-      setVideoRecorded(true);
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach((track) => track.stop());
       }
@@ -994,6 +998,18 @@ ${description.slice(0, 220)}...
                 <video
                   src={recordedVideoUrl}
                   controls
+                  preload="auto"
+                  playsInline
+                  onLoadedMetadata={(e) => {
+                    // Force duration calculation if browser reports Infinity for in-memory WebM blobs
+                    if (e.target.duration === Infinity) {
+                      e.target.currentTime = 1e101;
+                      e.target.ontimeupdate = function () {
+                        this.ontimeupdate = () => {};
+                        this.currentTime = 0;
+                      };
+                    }
+                  }}
                   className="w-full h-full object-cover"
                 />
               </div>
