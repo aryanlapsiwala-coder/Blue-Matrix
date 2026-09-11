@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { AppLayout } from './components/layout/AppLayout';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
@@ -35,7 +36,9 @@ export function App() {
           <Route
             element={
               <ProtectedRoute>
-                <AppLayout />
+                <ErrorBoundary>
+                  <AppLayout />
+                </ErrorBoundary>
               </ProtectedRoute>
             }
           >
