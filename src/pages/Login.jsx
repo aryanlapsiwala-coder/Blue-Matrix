@@ -89,6 +89,7 @@ export function Login() {
       await login({
         email: formData.email,
         password: formData.password,
+        role: formData.role,
       });
       navigate(from, { replace: true });
     } catch (err) {

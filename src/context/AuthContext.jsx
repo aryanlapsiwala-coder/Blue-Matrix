@@ -60,12 +60,47 @@ export function AuthProvider({ children }) {
   }, []);
 
   const switchRole = useCallback((newRole) => {
-    if (DEMO_USERS[newRole]) {
-      const demoUser = DEMO_USERS[newRole];
-      tokenStorage.setUser(demoUser);
-      tokenStorage.setAccessToken(`mock_jwt_${newRole.toLowerCase()}_token`);
-      setUser(demoUser);
-    }
+    setUser((prev) => {
+      if (prev && prev.email) {
+        const updated = {
+          ...prev,
+          role: newRole,
+          rollNumber:
+            newRole === ROLES.ADMIN
+              ? 'ADM-SYS-001'
+              : newRole === ROLES.FACULTY
+              ? 'FAC-EMP-4091'
+              : newRole === ROLES.ALUMNI
+              ? 'ALUM-VERIFIED'
+              : prev.rollNumber || '2023BCSE0142',
+          kycLevel:
+            newRole === ROLES.ADMIN
+              ? 'SUPER-ADMIN Identity Seal'
+              : newRole === ROLES.FACULTY
+              ? 'TIER-3 Institutional Faculty Head'
+              : newRole === ROLES.ALUMNI
+              ? 'TIER-3 Corporate Alumni Verified'
+              : 'TIER-2 Campus Student Verified',
+          graduationYear: newRole === ROLES.ALUMNI ? prev.graduationYear || 'Class of 2023' : prev.graduationYear,
+          currentCompany: newRole === ROLES.ALUMNI ? prev.currentCompany || 'NVIDIA (Senior Engineer)' : prev.currentCompany,
+        };
+        tokenStorage.setUser(updated);
+        tokenStorage.setAccessToken(`knowpass_jwt_${newRole.toLowerCase()}_${Date.now()}`);
+
+        if (isSupabaseConfigured && supabase && prev.id) {
+          supabase.from('profiles').update({ role: newRole }).eq('id', prev.id).catch(() => {});
+          supabase.auth.updateUser({ data: { role: newRole } }).catch(() => {});
+        }
+
+        return updated;
+      } else if (DEMO_USERS[newRole]) {
+        const demoUser = DEMO_USERS[newRole];
+        tokenStorage.setUser(demoUser);
+        tokenStorage.setAccessToken(`mock_jwt_${newRole.toLowerCase()}_token`);
+        return demoUser;
+      }
+      return prev;
+    });
   }, []);
 
   const updateUser = useCallback((updatedFields) => {

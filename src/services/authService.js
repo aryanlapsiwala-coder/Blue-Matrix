@@ -108,7 +108,8 @@ export const authService = {
         // 2. Check Supabase Auth user metadata
         const metadata = authData.user.user_metadata || {};
         const userName = profile?.name || metadata.name || credentials.email.split('@')[0];
-        const userRole = profile?.role || metadata.role || ROLES.STUDENT;
+        // Strictly honor the simulated role chosen by user on the login form
+        const userRole = credentials.role || profile?.role || metadata.role || ROLES.STUDENT;
         const userDept = profile?.department || metadata.department || 'Computer Science & Engineering (CSE)';
         const userYear = profile?.year_of_study || metadata.year_of_study || '4th Year (Senior)';
 
@@ -124,14 +125,50 @@ export const authService = {
           badges: profile?.badges || ['Pioneer'],
           avatar: profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
           joinedDate: profile?.created_at || authData.user.created_at || new Date().toISOString(),
+          graduationYear: profile?.graduation_year || metadata.graduation_year || (userRole === ROLES.ALUMNI ? 'Class of 2023' : null),
+          currentCompany: profile?.current_company || metadata.current_company || (userRole === ROLES.ALUMNI ? 'NVIDIA (Senior Engineer)' : null),
+          workEmail: profile?.work_email || metadata.work_email || (userRole === ROLES.ALUMNI ? credentials.email.trim() : null),
+          rollNumber: profile?.roll_number || metadata.roll_number || (userRole === ROLES.ADMIN ? 'ADM-SYS-001' : userRole === ROLES.FACULTY ? 'FAC-EMP-4091' : userRole === ROLES.ALUMNI ? 'ALUM-VERIFIED' : '2023BCSE0142'),
+          kycLevel: userRole === ROLES.ADMIN ? 'SUPER-ADMIN Identity Seal' : userRole === ROLES.FACULTY ? 'TIER-3 Institutional Faculty Head' : userRole === ROLES.ALUMNI ? 'TIER-3 Corporate Alumni Verified' : 'TIER-2 Campus Student Verified',
+          kycId: profile?.kyc_id || metadata.kyc_id || `KYC-${userRole.substring(0, 4)}-${Math.floor(1000 + Math.random() * 9000)}`,
         };
 
         const token = authData.session?.access_token || `supabase_token_${Date.now()}`;
         tokenStorage.setAccessToken(token);
         tokenStorage.setUser(loggedInUser);
-        console.log('[Supabase Auth] Logged in with verified name:', userName);
+        console.log('[Supabase Auth] Logged in with active role:', userRole, 'name:', userName);
+
+        // Synchronize updated role to Supabase PostgreSQL profile & auth metadata if role was changed
+        if (credentials.role && credentials.role !== profile?.role) {
+          supabase.from('profiles').update({ role: credentials.role }).eq('id', authData.user.id).catch(() => {});
+          supabase.auth.updateUser({ data: { role: credentials.role } }).catch(() => {});
+        }
+
         return { user: loggedInUser, accessToken: token };
       }
+    }
+
+    // 3. Fallback check for registered users in localStorage (offline / local dev support)
+    try {
+      const storedUsers = JSON.parse(localStorage.getItem('knowpass_registered_users') || '[]');
+      const matched = storedUsers.find(
+        (u) => u.email?.toLowerCase() === credentials.email?.trim()?.toLowerCase()
+      );
+      if (matched) {
+        const userRole = credentials.role || matched.role || ROLES.STUDENT;
+        const loggedInUser = {
+          ...matched,
+          role: userRole,
+          rollNumber: userRole === ROLES.ADMIN ? 'ADM-SYS-001' : userRole === ROLES.FACULTY ? 'FAC-EMP-4091' : userRole === ROLES.ALUMNI ? 'ALUM-VERIFIED' : (matched.rollNumber || '2023BCSE0142'),
+          kycLevel: userRole === ROLES.ADMIN ? 'SUPER-ADMIN Identity Seal' : userRole === ROLES.FACULTY ? 'TIER-3 Institutional Faculty Head' : userRole === ROLES.ALUMNI ? 'TIER-3 Corporate Alumni Verified' : 'TIER-2 Campus Student Verified',
+        };
+        const token = `knowpass_jwt_${userRole.toLowerCase()}_${Date.now()}`;
+        tokenStorage.setAccessToken(token);
+        tokenStorage.setUser(loggedInUser);
+        return { user: loggedInUser, accessToken: token };
+      }
+    } catch (e) {
+      console.warn('Error reading local registered users:', e);
     }
 
     throw new Error('User not registered or invalid password. Please check your credentials or click "Register an Account".');
