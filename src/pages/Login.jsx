@@ -301,30 +301,30 @@ export function Login() {
               <button
                 type="button"
                 onClick={() => handleQuickDemoLogin(ROLES.STUDENT)}
-                className="px-2 py-2 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl font-semibold transition"
+                className="px-2 py-2 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl font-semibold transition flex items-center justify-center gap-1.5"
               >
-                Log as Student
+                <span>🎓 Junior Student</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin(ROLES.ALUMNI)}
+                className="px-2 py-2 text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl font-semibold transition flex items-center justify-center gap-1.5"
+              >
+                <span>💼 Passed-Out Alumni</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickDemoLogin(ROLES.FACULTY)}
-                className="px-2 py-2 text-xs bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-xl font-semibold transition"
+                className="px-2 py-2 text-xs bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-xl font-semibold transition flex items-center justify-center gap-1.5"
               >
-                Log as Faculty
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin(ROLES.TECHNICIAN)}
-                className="px-2 py-2 text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl font-semibold transition"
-              >
-                Log as Tech
+                <span>🏛️ Faculty</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickDemoLogin(ROLES.ADMIN)}
-                className="px-2 py-2 text-xs bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-xl font-semibold transition"
+                className="px-2 py-2 text-xs bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-xl font-semibold transition flex items-center justify-center gap-1.5"
               >
-                Log as Admin
+                <span>🛡️ Admin</span>
               </button>
             </div>
           </div>

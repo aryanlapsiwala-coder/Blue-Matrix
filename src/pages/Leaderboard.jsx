@@ -29,188 +29,374 @@ import {
   FileText,
   ThumbsUp,
   BookOpen,
+  Briefcase,
+  Building2,
+  ExternalLink,
+  ArrowRight,
 } from 'lucide-react';
 
 // ==========================================
-// 1. DATASETS & RULES
+// 1. DATASETS FOR JUNIOR STUDENTS
 // ==========================================
 
-const POINT_RULES = [
-  { action: 'Submit a Knowledge Entry', points: '+50 pts', icon: FileText, desc: 'Publish a project retro, lab tip, SOP or placement insight', bg: 'bg-indigo-50 text-indigo-700' },
-  { action: 'Receive an Upvote', points: '+10 pts', icon: ThumbsUp, desc: 'Earned every time a peer or faculty upvotes your work', bg: 'bg-emerald-50 text-emerald-700' },
-  { action: 'AI-Quality Score > 80%', points: '+25 pts', icon: Sparkles, desc: 'Awarded when KnowBot AI scores your documentation structure above 80%', bg: 'bg-purple-50 text-purple-700' },
-  { action: 'Complete User Profile', points: '+20 pts', icon: ShieldCheck, desc: 'Fill department, academic year, and research bio', bg: 'bg-blue-50 text-blue-700' },
-  { action: 'Refer a Contributor', points: '+30 pts', icon: Gift, desc: 'Invite a classmate or junior who submits their first note', bg: 'bg-amber-50 text-amber-700' },
+const STUDENT_POINT_RULES = [
+  { action: 'Publish Lab SOP / Note', points: '+50 pts', icon: FileText, desc: 'Author a verified lab runbook, project retro, or placement insight', bg: 'bg-indigo-50 text-indigo-700' },
+  { action: 'Receive Peer / Senior Upvote', points: '+10 pts', icon: ThumbsUp, desc: 'Earned every time a classmate or senior upvotes your guide', bg: 'bg-emerald-50 text-emerald-700' },
+  { action: 'Faculty Verification Endorsement', points: '+40 pts', icon: ShieldCheck, desc: 'Awarded when a professor certifies your SOP as syllabus-grade', bg: 'bg-blue-50 text-blue-700' },
+  { action: 'AI Structure Score > 85%', points: '+25 pts', icon: Sparkles, desc: 'Earned when KnowBot validates Markdown formatting & completeness', bg: 'bg-purple-50 text-purple-700' },
+  { action: 'Refer a Junior Contributor', points: '+30 pts', icon: Gift, desc: 'Invite a campus peer who publishes their first approved guide', bg: 'bg-amber-50 text-amber-700' },
 ];
 
-const BADGE_DEFINITIONS = [
+const STUDENT_PERK_TIERS = [
   {
-    id: 'pioneer',
-    name: 'Pioneer',
-    icon: '🌟',
-    color: 'from-amber-400 to-amber-600 text-white',
-    border: 'border-amber-200 bg-amber-50 text-amber-900',
-    criteria: 'First contributor from a department',
-    holders: 14,
+    tier: 'Tier 1 Elite',
+    rank: 'Top 1 – 10',
+    title: 'T&P Recruiter Spotlight + Dean LOR',
+    desc: 'Official candidate dossier pinned in front of visiting Tier-1 recruiters (Google, Qualcomm, Microsoft) + official signed Dean Recommendation Letter.',
+    badgeBg: 'bg-amber-500 text-white',
+    ring: 'ring-amber-200 border-amber-300',
+    icon: '🥇',
   },
   {
-    id: 'mentor',
-    name: 'Mentor',
-    icon: '🛡️',
-    color: 'from-indigo-500 to-indigo-700 text-white',
-    border: 'border-indigo-200 bg-indigo-50 text-indigo-900',
-    criteria: '10+ published knowledge entries',
-    holders: 28,
+    tier: 'Tier 2 Advanced',
+    rank: 'Top 11 – 25',
+    title: '1-on-1 Alumni Mock & Referral Token',
+    desc: 'Unlocks guaranteed 1-on-1 technical mock interviews & direct company referral tokens routed to passed-out alumni at top tech firms.',
+    badgeBg: 'bg-indigo-600 text-white',
+    ring: 'ring-indigo-100 border-indigo-200',
+    icon: '🥈',
   },
   {
-    id: 'verified_expert',
-    name: 'Verified Expert',
-    icon: '🏆',
-    color: 'from-emerald-500 to-emerald-700 text-white',
-    border: 'border-emerald-200 bg-emerald-50 text-emerald-900',
-    criteria: '3+ entries with 10+ upvotes each',
-    holders: 19,
+    tier: 'Tier 3 Contributor',
+    rank: 'Top 26 – 50',
+    title: 'NEP 2020 Grace Marks & GPU Lab Pass',
+    desc: 'Continuous Internal Assessment (CIA) term-work credits under NEP 2020 peer-learning provisions + fast-pass queue for campus Nvidia GPU clusters.',
+    badgeBg: 'bg-emerald-600 text-white',
+    ring: 'ring-emerald-100 border-emerald-200',
+    icon: '🥉',
   },
 ];
 
-const LEADERBOARD_CONTRIBUTORS = [
+const STUDENT_CONTRIBUTORS = [
   {
     rank: 1,
-    id: 'c1',
+    id: 's1',
     name: 'Alex Chen',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
     role: 'STUDENT',
     department: 'Computer Science & Engineering',
     year: '4th Year (Senior)',
     knowPoints: 2480,
-    level: 'Grandmaster Level 8',
+    level: 'Grandmaster Scholar',
     entriesCount: 14,
     upvotesReceived: 312,
-    badges: ['Pioneer', 'Mentor', 'Verified Expert'],
+    badges: ['T&P Star', 'NEP 2020 Honors', 'Verified Expert'],
     topContribution: 'Google & Microsoft Campus Placement: System Design Playbook',
+    tpStatus: 'Tier-1 Recruiter Spotlight',
   },
   {
     rank: 2,
-    id: 'c2',
-    name: 'Dr. Sarah Jenkins',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
-    role: 'FACULTY',
-    department: 'Information Technology & AI',
-    year: 'Associate Professor',
-    knowPoints: 2150,
-    level: 'Master Level 7',
-    entriesCount: 22,
-    upvotesReceived: 284,
-    badges: ['Pioneer', 'Mentor', 'Verified Expert'],
-    topContribution: 'Distributed Systems: Raft Consensus & Microservices (CS-402)',
-  },
-  {
-    rank: 3,
-    id: 'c3',
-    name: 'Marcus Ramirez',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-    role: 'TECHNICIAN',
-    department: 'Central Computing & Hardware Labs',
-    year: 'Lead Systems Admin',
-    knowPoints: 1940,
-    level: 'Master Level 7',
-    entriesCount: 19,
-    upvotesReceived: 245,
-    badges: ['Pioneer', 'Mentor', 'Verified Expert'],
-    topContribution: 'High Performance Computing Cluster (HPC) Setup & SLURM Guidelines',
-  },
-  {
-    rank: 4,
-    id: 'c4',
-    name: 'Priya Sundaram',
-    avatar: 'https://images.unsplash.com/photo-1580894732444-8ecded7900cd?w=150',
-    role: 'FACULTY',
-    department: 'Electronics & Communication (ECE)',
-    year: 'Assistant Professor',
-    knowPoints: 1420,
-    level: 'Expert Level 5',
-    entriesCount: 11,
-    upvotesReceived: 180,
-    badges: ['Mentor', 'Verified Expert'],
-    topContribution: 'VLSI Digital Design: CMOS Circuit Simulation & Verilog Testbenches',
-  },
-  {
-    rank: 5,
-    id: 'c5',
-    name: 'David Kim',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
-    role: 'STUDENT',
-    department: 'Computer Science & Engineering',
-    year: '4th Year (Senior)',
-    knowPoints: 1180,
-    level: 'Expert Level 4',
-    entriesCount: 8,
-    upvotesReceived: 140,
-    badges: ['Verified Expert'],
-    topContribution: 'Kubernetes Cluster Provisioning on Bare-Metal Linux SOP',
-  },
-  {
-    rank: 6,
-    id: 'c6',
+    id: 's2',
     name: 'Sneha Reddy',
     avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
     role: 'STUDENT',
     department: 'Information Technology & AI',
     year: '3rd Year (Junior)',
-    knowPoints: 920,
-    level: 'Advocate Level 3',
-    entriesCount: 6,
-    upvotesReceived: 95,
-    badges: ['Pioneer'],
-    topContribution: 'Vector Database (ChromaDB) Embeddings for Semantic RAG',
+    knowPoints: 2120,
+    level: 'Master Scholar',
+    entriesCount: 11,
+    upvotesReceived: 275,
+    badges: ['T&P Star', 'Pioneer', 'Verified Expert'],
+    topContribution: 'RISC-V 5-Stage Core in Verilog with Branch Prediction on Artix-7',
+    tpStatus: 'Tier-1 Recruiter Spotlight',
   },
   {
-    rank: 7,
-    id: 'c7',
+    rank: 3,
+    id: 's3',
+    name: 'David Kim',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
+    role: 'STUDENT',
+    department: 'Computer Science & Engineering',
+    year: '4th Year (Senior)',
+    knowPoints: 1780,
+    level: 'Master Scholar',
+    entriesCount: 9,
+    upvotesReceived: 198,
+    badges: ['Lab Pioneer', 'Verified Expert'],
+    topContribution: 'Bare-Metal Kubernetes Cluster Provisioning & SLURM Setup SOP',
+    tpStatus: 'Dean LOR Candidate',
+  },
+  {
+    rank: 4,
+    id: 's4',
     name: 'Rohan Sharma',
     avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150',
     role: 'STUDENT',
     department: 'Mechanical Engineering (ME)',
     year: '4th Year (Senior)',
-    knowPoints: 780,
-    level: 'Advocate Level 3',
-    entriesCount: 5,
-    upvotesReceived: 82,
+    knowPoints: 1460,
+    level: 'Senior Contributor',
+    entriesCount: 8,
+    upvotesReceived: 165,
+    badges: ['Pioneer', 'Peer Leader'],
+    topContribution: 'ANSYS Fluent CFD Aerodynamic Meshing & Formula Student Chassis',
+    tpStatus: 'Alumni Referral Qualified',
+  },
+  {
+    rank: 5,
+    id: 's5',
+    name: 'Ananya Iyer',
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+    role: 'STUDENT',
+    department: 'Electronics & Communication (ECE)',
+    year: '2nd Year (Sophomore)',
+    knowPoints: 1190,
+    level: 'Rising Scholar',
+    entriesCount: 6,
+    upvotesReceived: 130,
     badges: ['Pioneer'],
-    topContribution: 'ANSYS Fluent CFD Aerodynamic Meshing Tutorial',
+    topContribution: 'Cadence Virtuoso CMOS Analog Amplifier Simulation Guide',
+    tpStatus: 'NEP 2020 Eligible',
+  },
+  {
+    rank: 6,
+    id: 's6',
+    name: 'Kabir Mehta',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+    role: 'STUDENT',
+    department: 'Information Technology & AI',
+    year: '3rd Year (Junior)',
+    knowPoints: 940,
+    level: 'Advocate',
+    entriesCount: 5,
+    upvotesReceived: 98,
+    badges: ['Peer Leader'],
+    topContribution: 'ChromaDB Vector Embeddings with LangChain RAG Pipelines',
+    tpStatus: 'Active Contributor',
+  },
+  {
+    rank: 7,
+    id: 's7',
+    name: 'Tanvi Deshmukh',
+    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150',
+    role: 'STUDENT',
+    department: 'Computer Science & Engineering',
+    year: '1st Year (Freshman)',
+    knowPoints: 720,
+    level: 'Apprentice',
+    entriesCount: 4,
+    upvotesReceived: 76,
+    badges: ['Pioneer'],
+    topContribution: 'CS101 Memory Management & Pointer Arithmetic Demystified',
+    tpStatus: 'Rising Freshman',
+  },
+];
+
+// ==========================================
+// 2. DATASETS FOR PASSED-OUT ALUMNI MENTORS
+// ==========================================
+
+const ALUMNI_POINT_RULES = [
+  { action: 'Publish Production / Interview Playbook', points: '+75 pts', icon: Briefcase, desc: 'Real industry system design, interview rounds, or production runbook', bg: 'bg-indigo-50 text-indigo-700' },
+  { action: 'Conduct 1-on-1 Junior Mock / Resume Review', points: '+50 pts', icon: Users, desc: 'Verified session helping a student prepare for campus or off-campus hiring', bg: 'bg-emerald-50 text-emerald-700' },
+  { action: 'Junior Placed via Your Referral', points: '+150 pts', icon: Award, desc: 'Awarded when your referred junior lands an internship or full-time offer', bg: 'bg-purple-50 text-purple-700' },
+  { action: 'Resolve a Junior Tech Inquiry', points: '+20 pts', icon: Sparkles, desc: 'Provide professional architectural guidance on a student inquiry', bg: 'bg-blue-50 text-blue-700' },
+  { action: 'Endorse a Campus Lab SOP', points: '+30 pts', icon: ShieldCheck, desc: 'Validate that a college lab experiment reflects actual industry workflows', bg: 'bg-amber-50 text-amber-700' },
+];
+
+const ALUMNI_PERK_TIERS = [
+  {
+    tier: 'Tier 1 Fellow',
+    rank: 'Top 1 – 10',
+    title: 'Lifetime IEEE / ACM Library Access + Convocation Honor',
+    desc: 'Permanent institutional proxy pass to IEEE Xplore, ACM Digital Library & ScienceDirect + Guest of Honor citation at annual convocation.',
+    badgeBg: 'bg-amber-500 text-white',
+    ring: 'ring-amber-200 border-amber-300',
+    icon: '🥇',
+  },
+  {
+    tier: 'Tier 2 Scout',
+    rank: 'Top 11 – 25',
+    title: 'Priority Talent Scout Pipeline (Referral Bonuses)',
+    desc: 'Exclusive access to pre-vetted top 10% junior coders to submit for corporate employee referral bonuses ($1,000 – $2,500 / ₹50k – ₹1.5L) at your firm.',
+    badgeBg: 'bg-indigo-600 text-white',
+    ring: 'ring-indigo-100 border-indigo-200',
+    icon: '🥈',
+  },
+  {
+    tier: 'Tier 3 Mentor',
+    rank: 'Top 26 – 50',
+    title: 'LinkedIn Verified Fellow Badge & Incubator Pass',
+    desc: 'Verifiable cryptographic credential: "Top 1% Alma Mater Industry Mentor" on LinkedIn + weekend access to campus incubator & hardware maker labs.',
+    badgeBg: 'bg-emerald-600 text-white',
+    ring: 'ring-emerald-100 border-emerald-200',
+    icon: '🥉',
+  },
+];
+
+const ALUMNI_CONTRIBUTORS = [
+  {
+    rank: 1,
+    id: 'a1',
+    name: 'Vikram Malhotra',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
+    role: 'ALUMNI',
+    graduationYear: 'Class of 2023',
+    currentCompany: 'NVIDIA',
+    currentRole: 'Senior Robotics Software Engineer',
+    department: 'Mechanical & Robotics',
+    knowPoints: 4850,
+    level: 'Distinguished Fellow',
+    entriesCount: 18,
+    upvotesReceived: 340,
+    referralsOffered: 12,
+    badges: ['Top 1% Mentor', 'Talent Scout', 'Distinguished Fellow'],
+    topContribution: 'ROS2 Humble Real-Time Kinematics & GPU Ray-Tracing Simulation Runbook',
+    alumniPrivilege: 'Lifetime IEEE/ACM Library Proxy + Convocation Jury',
+  },
+  {
+    rank: 2,
+    id: 'a2',
+    name: 'Priya Sundaram',
+    avatar: 'https://images.unsplash.com/photo-1580894732444-8ecded7900cd?w=150',
+    role: 'ALUMNI',
+    graduationYear: 'Class of 2022',
+    currentCompany: 'Microsoft',
+    currentRole: 'Cloud Systems Architect (Azure Core)',
+    department: 'Electronics & Communication',
+    knowPoints: 4320,
+    level: 'Distinguished Fellow',
+    entriesCount: 15,
+    upvotesReceived: 295,
+    referralsOffered: 9,
+    badges: ['Top 1% Mentor', 'Talent Scout', 'Verified Fellow'],
+    topContribution: 'Distributed Systems & High-Scale Microservices: Azure Production Retro',
+    alumniPrivilege: 'Lifetime IEEE/ACM Library Proxy + Convocation Jury',
+  },
+  {
+    rank: 3,
+    id: 'a3',
+    name: 'Marcus Ramirez',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+    role: 'ALUMNI',
+    graduationYear: 'Class of 2021',
+    currentCompany: 'Google Cloud',
+    currentRole: 'Principal Infrastructure Engineer',
+    department: 'Computer Science & Engineering',
+    knowPoints: 3790,
+    level: 'Master Industry Mentor',
+    entriesCount: 13,
+    upvotesReceived: 250,
+    referralsOffered: 14,
+    badges: ['Talent Scout', 'Master Mentor'],
+    topContribution: 'Terraform & Kubernetes Multi-Region Cluster Fault-Tolerance Playbook',
+    alumniPrivilege: 'Direct Talent Scout Access (Referral Bonus $$)',
+  },
+  {
+    rank: 4,
+    id: 'a4',
+    name: 'Neha Kapoor',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
+    role: 'ALUMNI',
+    graduationYear: 'Class of 2023',
+    currentCompany: 'Qualcomm',
+    currentRole: 'ASIC Digital Verification Engineer',
+    department: 'Electronics & Communication',
+    knowPoints: 2950,
+    level: 'Senior Industry Mentor',
+    entriesCount: 9,
+    upvotesReceived: 185,
+    referralsOffered: 7,
+    badges: ['Talent Scout', 'Verified Fellow'],
+    topContribution: 'SystemVerilog UVM Testbench Frameworks for Silicon Tape-Out',
+    alumniPrivilege: 'Direct Talent Scout Access (Referral Bonus $$)',
+  },
+  {
+    rank: 5,
+    id: 'a5',
+    name: 'Rahul Saxena',
+    avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150',
+    role: 'ALUMNI',
+    graduationYear: 'Class of 2022',
+    currentCompany: 'Zomato / Blinkit',
+    currentRole: 'Staff Backend Engineer',
+    department: 'Information Technology & AI',
+    knowPoints: 2410,
+    level: 'Industry Mentor',
+    entriesCount: 7,
+    upvotesReceived: 145,
+    referralsOffered: 5,
+    badges: ['Master Mentor'],
+    topContribution: 'Ultra-Low Latency Geohash Indexing with Redis & Kafka Event Streams',
+    alumniPrivilege: 'LinkedIn Verified Industry Fellow Credential',
+  },
+  {
+    rank: 6,
+    id: 'a6',
+    name: 'Aisha Patel',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+    role: 'ALUMNI',
+    graduationYear: 'Class of 2024',
+    currentCompany: 'Texas Instruments',
+    currentRole: 'Embedded Firmware Specialist',
+    department: 'Electronics & Communication',
+    knowPoints: 1850,
+    level: 'Associate Mentor',
+    entriesCount: 5,
+    upvotesReceived: 98,
+    referralsOffered: 3,
+    badges: ['Verified Fellow'],
+    topContribution: 'FreeRTOS Task Scheduling & Memory Protection on ARM Cortex-M4',
+    alumniPrivilege: 'LinkedIn Verified Industry Fellow Credential',
   },
 ];
 
 const RECENT_POINTS_FEED = [
-  { user: 'Alex Chen', points: '+10 pts', reason: 'Upvote received on Raft Consensus Guide', time: '5m ago' },
-  { user: 'Sneha Reddy', points: '+50 pts', reason: 'Published placement note for Microsoft', time: '18m ago' },
-  { user: 'Marcus Ramirez', points: '+25 pts', reason: 'AI Quality Score 94% on GPU Cluster SOP', time: '42m ago' },
-  { user: 'David Kim', points: '+30 pts', reason: 'Referred Vikram Malhotra (+30 pts)', time: '1h ago' },
-  { user: 'Rohan Sharma', points: '+20 pts', reason: 'Completed campus user profile', time: '3h ago' },
+  { user: 'Vikram Malhotra (NVIDIA)', points: '+75 pts', reason: 'Published ROS2 Simulation Playbook', time: '4m ago', isAlumni: true },
+  { user: 'Alex Chen (4th Year)', points: '+50 pts', reason: 'Authored System Design Guide (Google/Microsoft)', time: '12m ago', isAlumni: false },
+  { user: 'Sneha Reddy (3rd Year)', points: '+40 pts', reason: 'Faculty endorsed RISC-V Verilog Runbook', time: '28m ago', isAlumni: false },
+  { user: 'Priya Sundaram (Microsoft)', points: '+150 pts', reason: 'Junior placed at Microsoft Azure Core via referral', time: '1h ago', isAlumni: true },
+  { user: 'David Kim (4th Year)', points: '+25 pts', reason: 'AI Quality score 94% on Kubernetes SOP', time: '2h ago', isAlumni: false },
 ];
 
 // ==========================================
-// 2. MAIN COMPONENT
+// 3. MAIN COMPONENT
 // ==========================================
 
 export function Leaderboard() {
   const { user } = useAuth();
 
-  // State
-  const [timeFilter, setTimeFilter] = useState('This Semester');
+  // Active Leaderboard Track: 'students' or 'alumni'
+  const [activeBoard, setActiveBoard] = useState('students');
+
+  // Filters & Search
   const [deptFilter, setDeptFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [liveContributors, setLiveContributors] = useState(LEADERBOARD_CONTRIBUTORS);
 
-  // Referral Modal
+  // Live data holders
+  const [liveStudents, setLiveStudents] = useState(STUDENT_CONTRIBUTORS);
+  const [liveAlumni, setLiveAlumni] = useState(ALUMNI_CONTRIBUTORS);
+
+  // Modals
   const [referralModalOpen, setReferralModalOpen] = useState(false);
   const [referralEmail, setReferralEmail] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
   const [referralSuccessToast, setReferralSuccessToast] = useState(false);
 
-  // Dynamic live fetch from Supabase PostgreSQL profiles table
+  // 1-on-1 Alumni Referral Request Modal
+  const [alumniReferralModalOpen, setAlumniReferralModalOpen] = useState(false);
+  const [selectedAlumnus, setSelectedAlumnus] = useState(null);
+  const [referralForm, setReferralForm] = useState({
+    requestType: 'Direct Company Referral',
+    targetRole: 'Software Development Engineer (SDE-1)',
+    resumeLink: '',
+    note: '',
+  });
+  const [requestSentToast, setRequestSentToast] = useState(false);
+
+  // Live profile fetch from Supabase if connected
   useEffect(() => {
-    const fetchLiveLeaderboard = async () => {
+    const fetchLiveProfiles = async () => {
       if (isSupabaseConfigured && supabase) {
         try {
           const { data, error } = await supabase
@@ -219,52 +405,83 @@ export function Leaderboard() {
             .order('know_points', { ascending: false });
 
           if (!error && data && data.length > 0) {
-            const dbProfiles = data.map((p) => ({
-              id: p.id || p.email,
-              name: p.name || p.email?.split('@')[0] || 'Campus Scholar',
-              avatar: p.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-              role: p.role || 'STUDENT',
-              department: p.department || 'Computer Science & Engineering',
-              year: p.year_of_study || '4th Year',
-              knowPoints: Number(p.know_points) || 20,
-              level: `Level ${Math.max(1, Math.floor((Number(p.know_points) || 20) / 250) + 1)}`,
-              entriesCount: 1,
-              upvotesReceived: 5,
-              badges: p.badges || ['Pioneer'],
-              topContribution: p.bio || 'Verified Campus Contributor',
-            }));
+            // Partition by role
+            const dbStudents = data
+              .filter((p) => p.role === 'STUDENT' || !p.role)
+              .map((p) => ({
+                id: p.id || p.email,
+                name: p.name || p.email?.split('@')[0] || 'Campus Scholar',
+                avatar: p.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+                role: 'STUDENT',
+                department: p.department || 'Computer Science & Engineering',
+                year: p.year_of_study || '4th Year',
+                knowPoints: Number(p.know_points) || 20,
+                level: `Level ${Math.max(1, Math.floor((Number(p.know_points) || 20) / 250) + 1)}`,
+                entriesCount: 1,
+                upvotesReceived: 5,
+                badges: p.badges || ['Pioneer'],
+                topContribution: p.bio || 'Verified Student Contributor',
+                tpStatus: 'Active Contributor',
+              }));
 
-            // Merge with standard benchmarks and sort by knowPoints
-            const existingNames = new Set(dbProfiles.map((p) => p.name.toLowerCase()));
-            const benchmarks = LEADERBOARD_CONTRIBUTORS.filter((b) => !existingNames.has(b.name.toLowerCase()));
-            const combined = [...dbProfiles, ...benchmarks];
-            combined.sort((a, b) => (b.knowPoints || 0) - (a.knowPoints || 0));
+            const dbAlumni = data
+              .filter((p) => p.role === 'ALUMNI')
+              .map((p) => ({
+                id: p.id || p.email,
+                name: p.name || p.email?.split('@')[0] || 'Alumni Mentor',
+                avatar: p.avatar_url || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
+                role: 'ALUMNI',
+                graduationYear: p.graduation_year || 'Class of 2023',
+                currentCompany: p.current_company || 'Tech Industry',
+                currentRole: p.job_title || 'Software Engineer',
+                department: p.department || 'Engineering',
+                knowPoints: Number(p.know_points) || 50,
+                level: 'Industry Mentor',
+                entriesCount: 2,
+                upvotesReceived: 15,
+                referralsOffered: 2,
+                badges: ['Verified Fellow'],
+                topContribution: p.bio || 'Industry Runbook Contributor',
+                alumniPrivilege: 'LinkedIn Verified Fellow',
+              }));
 
-            // Assign real dynamic ranks 1, 2, 3...
-            const ranked = combined.map((item, idx) => ({ ...item, rank: idx + 1 }));
-            setLiveContributors(ranked);
+            if (dbStudents.length > 0) {
+              const existingS = new Set(dbStudents.map((s) => s.name.toLowerCase()));
+              const combinedS = [...dbStudents, ...STUDENT_CONTRIBUTORS.filter((s) => !existingS.has(s.name.toLowerCase()))];
+              combinedS.sort((a, b) => (b.knowPoints || 0) - (a.knowPoints || 0));
+              setLiveStudents(combinedS.map((item, idx) => ({ ...item, rank: idx + 1 })));
+            }
+
+            if (dbAlumni.length > 0) {
+              const existingA = new Set(dbAlumni.map((a) => a.name.toLowerCase()));
+              const combinedA = [...dbAlumni, ...ALUMNI_CONTRIBUTORS.filter((a) => !existingA.has(a.name.toLowerCase()))];
+              combinedA.sort((a, b) => (b.knowPoints || 0) - (a.knowPoints || 0));
+              setLiveAlumni(combinedA.map((item, idx) => ({ ...item, rank: idx + 1 })));
+            }
           }
         } catch (err) {
-          console.warn('Leaderboard live sync fallback:', err);
+          console.warn('Leaderboard sync notice:', err);
         }
       }
     };
 
-    fetchLiveLeaderboard();
+    fetchLiveProfiles();
   }, [user?.knowPoints, user?.name]);
 
-  // Filtered contributors
-  const filteredContributors = useMemo(() => {
-    return liveContributors.filter((c) => {
+  // Current active list based on selected track
+  const currentList = useMemo(() => {
+    const list = activeBoard === 'students' ? liveStudents : liveAlumni;
+    return list.filter((c) => {
       const matchSearch =
         c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.department.toLowerCase().includes(searchQuery.toLowerCase());
+        c.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (c.currentCompany && c.currentCompany.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchDept = deptFilter === 'All' || c.department.includes(deptFilter);
       return matchSearch && matchDept;
     });
-  }, [liveContributors, searchQuery, deptFilter]);
+  }, [activeBoard, liveStudents, liveAlumni, searchQuery, deptFilter]);
 
-  const top3 = filteredContributors.slice(0, 3);
+  const top3 = currentList.slice(0, 3);
 
   const handleCopyInviteLink = () => {
     navigator.clipboard.writeText(`https://knowpass.campus.edu/join?ref=${user?.name?.toLowerCase().replace(/\s+/g, '_') || 'scholar'}`);
@@ -279,6 +496,24 @@ export function Leaderboard() {
     setReferralModalOpen(false);
     setReferralEmail('');
     setTimeout(() => setReferralSuccessToast(false), 4000);
+  };
+
+  const handleOpenAlumniRequest = (alumnus) => {
+    setSelectedAlumnus(alumnus);
+    setReferralForm({
+      requestType: 'Direct Company Referral',
+      targetRole: `Software Engineer / Intern at ${alumnus.currentCompany}`,
+      resumeLink: '',
+      note: `Hi ${alumnus.name}, I reviewed your "${alumnus.topContribution}" guide on KnowPass. I would love your guidance and a potential referral for our campus batch!`,
+    });
+    setAlumniReferralModalOpen(true);
+  };
+
+  const handleSubmitAlumniRequest = (e) => {
+    e.preventDefault();
+    setAlumniReferralModalOpen(false);
+    setRequestSentToast(true);
+    setTimeout(() => setRequestSentToast(false), 5000);
   };
 
   return (
@@ -298,13 +533,13 @@ export function Leaderboard() {
         <div className="space-y-1.5 relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-amber-300 text-xs font-bold border border-white/15">
             <Trophy className="w-3.5 h-3.5 text-amber-300" />
-            CAMPUS GAMIFICATION & REWARDS HUB
+            DUAL-TRACK INSTITUTIONAL LEADERBOARD
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-            KnowPass Semester Leaderboard
+            Campus Recognition & Impact Hub
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
-            Earn KnowPoints, unlock exclusive verified badges, and climb the institutional rankings by sharing knowledge
+            Fair, segregated rankings for <strong>Current Junior Students</strong> and <strong>Passed-Out Working Alumni</strong> with tailored real-world rewards
           </p>
         </div>
 
@@ -314,23 +549,148 @@ export function Leaderboard() {
             className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs shadow-lg shadow-amber-500/20 px-4 py-2.5 flex items-center gap-2"
           >
             <Gift className="w-4 h-4" />
-            <span>Refer a Contributor (+30 pts)</span>
+            <span>Invite Peer / Alumni (+30 pts)</span>
           </Button>
         </div>
       </div>
 
-      {/* Toast Notification */}
+      {/* Toast Notifications */}
       {referralSuccessToast && (
         <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between text-xs font-bold text-emerald-800 animate-in slide-in-from-top duration-200 shadow-sm">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>Referral invitation sent! You will automatically receive +30 KnowPoints when your peer submits their first entry.</span>
+            <span>Referral invitation sent! You will receive +30 KnowPoints when they publish their first approved guide.</span>
           </div>
           <button onClick={() => setReferralSuccessToast(false)} className="text-emerald-600 hover:text-emerald-900">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
+
+      {requestSentToast && (
+        <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-center justify-between text-xs font-bold text-indigo-900 animate-in slide-in-from-top duration-200 shadow-sm">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+            <span>
+              1-on-1 Referral Request successfully dispatched to <strong>{selectedAlumnus?.name} ({selectedAlumnus?.currentCompany})</strong>! Notification routed to their verified email.
+            </span>
+          </div>
+          <button onClick={() => setRequestSentToast(false)} className="text-indigo-600 hover:text-indigo-900">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* ========================================================
+          DUAL-TRACK LEADERBOARD TOGGLE TABS
+      ======================================================== */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="bg-slate-100 p-1.5 rounded-2xl flex items-center gap-1.5 border border-slate-200 shadow-inner">
+            <button
+              onClick={() => setActiveBoard('students')}
+              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-2 ${
+                activeBoard === 'students'
+                  ? 'bg-white text-indigo-700 shadow-md shadow-slate-200/50 border border-slate-200/60'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>🎓 Junior Studying Students</span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                activeBoard === 'students' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-200 text-slate-600'
+              }`}>
+                {liveStudents.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveBoard('alumni')}
+              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-2 ${
+                activeBoard === 'alumni'
+                  ? 'bg-white text-emerald-700 shadow-md shadow-slate-200/50 border border-slate-200/60'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              <Briefcase className="w-4 h-4" />
+              <span>💼 Passed-Out Alumni Mentors</span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                activeBoard === 'alumni' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+              }`}>
+                {liveAlumni.length}
+              </span>
+            </button>
+          </div>
+
+          <div className="text-xs font-semibold text-slate-500 flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Points partition guarantees 100% fair evaluation</span>
+          </div>
+        </div>
+
+        {/* Dynamic Track Explainer Note */}
+        <div className={`p-3.5 rounded-2xl border text-xs leading-relaxed transition ${
+          activeBoard === 'students'
+            ? 'bg-blue-50/70 border-blue-200/80 text-blue-900'
+            : 'bg-emerald-50/70 border-emerald-200/80 text-emerald-900'
+        }`}>
+          {activeBoard === 'students' ? (
+            <p>
+              🎓 <strong>Junior Studying Students Track:</strong> Requires active college enrollment ID. Points earned from verified lab runbooks, course tips, and peer reviews unlock <strong>T&P Recruiter Spotlight</strong>, <strong>Dean LORs</strong>, and <strong>1-on-1 Alumni Referral Tokens</strong>.
+            </p>
+          ) : (
+            <p>
+              💼 <strong>Passed-Out Alumni Track:</strong> No college ID needed—uses personal/work email. Points earned from publishing production playbooks, system design architectures, and junior mentorship unlock <strong>Lifetime IEEE/ACM Library Proxy Passes</strong>, <strong>Talent Scout referral bonuses</strong>, and <strong>Convocation citations</strong>.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* ========================================================
+          INSTITUTIONAL UTILITY & REWARDS MATRIX (WHAT YOU UNLOCK)
+      ======================================================== */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-500" />
+            <h3 className="text-base font-black text-slate-900">
+              {activeBoard === 'students' ? '🎓 Junior Student Unlocks & Career Perks' : '💼 Passed-Out Alumni Privileges & Talent Scouting'}
+            </h3>
+          </div>
+          <span className="text-[11px] font-bold text-slate-400">Institutional Merit System</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {(activeBoard === 'students' ? STUDENT_PERK_TIERS : ALUMNI_PERK_TIERS).map((perk, idx) => (
+            <div
+              key={idx}
+              className={`p-5 rounded-3xl bg-white border shadow-xs flex flex-col justify-between space-y-3 ${perk.ring} hover:shadow-md transition`}
+            >
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xl">{perk.icon}</span>
+                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${perk.badgeBg}`}>
+                    {perk.rank}
+                  </span>
+                </div>
+                <h4 className="text-sm font-black text-slate-900 leading-snug">
+                  {perk.title}
+                </h4>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  {perk.desc}
+                </p>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-semibold">
+                <span>{perk.tier}</span>
+                <span className="text-indigo-600 font-bold flex items-center gap-0.5">
+                  Verified Perk <ChevronRight className="w-3 h-3" />
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* ========================================================
           TOP PODIUM: 1ST, 2ND, 3RD PLACE
@@ -339,74 +699,104 @@ export function Leaderboard() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Flame className="w-5 h-5 text-amber-500" />
-            <h2 className="text-lg font-black text-slate-900">Semester Top Champions</h2>
+            <h2 className="text-lg font-black text-slate-900">
+              {activeBoard === 'students' ? 'Current Semester Student Champions' : 'Top Alumni Industry Mentors'}
+            </h2>
           </div>
-          <span className="text-xs font-bold text-slate-500">Updated Real-Time</span>
+          <span className="text-xs font-bold text-slate-500">Live Institutional Standings</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-4">
           {/* 2nd Place */}
           {top3[1] && (
             <Card className="p-6 order-2 md:order-1 flex flex-col justify-between border-slate-200 bg-gradient-to-b from-slate-50/80 to-white relative hover:shadow-md transition">
-              <div className="absolute -top-3 left-6 px-3 py-1 rounded-full bg-slate-300 text-slate-800 text-xs font-black border border-slate-400 flex items-center gap-1 shadow-sm">
-                🥈 2nd Place
-              </div>
-              <div className="mt-2 text-center space-y-2">
-                <img
-                  src={top3[1].avatar}
-                  alt={top3[1].name}
-                  className="w-16 h-16 rounded-2xl object-cover mx-auto ring-4 ring-slate-200 shadow-md"
-                />
-                <div>
-                  <h3 className="text-base font-black text-slate-900">{top3[1].name}</h3>
-                  <p className="text-[11px] text-slate-500">{top3[1].department}</p>
-                </div>
-                <div className="p-2.5 bg-slate-100 rounded-xl">
-                  <span className="text-xl font-black text-slate-900">{top3[1].knowPoints.toLocaleString()}</span>
-                  <span className="text-xs text-slate-500 font-bold ml-1">KnowPoints</span>
-                </div>
-              </div>
-              <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap justify-center gap-1">
-                {top3[1].badges.map((b) => (
-                  <span key={b} className="text-[10px] font-bold bg-white border px-2 py-0.5 rounded-md shadow-2xs">
-                    {b === 'Pioneer' ? '🌟' : b === 'Mentor' ? '🛡️' : '🏆'} {b}
+              <div className="text-center space-y-3">
+                <div className="relative inline-block">
+                  <img
+                    src={top3[1].avatar}
+                    alt={top3[1].name}
+                    className="w-20 h-20 rounded-2xl mx-auto object-cover ring-4 ring-slate-300 shadow-md"
+                  />
+                  <span className="absolute -bottom-2.5 -right-2.5 w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-black text-xs flex items-center justify-center border-2 border-white shadow">
+                    🥈
                   </span>
-                ))}
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">{top3[1].name}</h3>
+                  {activeBoard === 'alumni' ? (
+                    <p className="text-xs font-bold text-emerald-700 mt-0.5">
+                      {top3[1].currentCompany} • {top3[1].currentRole}
+                    </p>
+                  ) : (
+                    <p className="text-xs font-semibold text-slate-500 mt-0.5">
+                      {top3[1].year} • {top3[1].department}
+                    </p>
+                  )}
+                  <span className="inline-block mt-2 text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full">
+                    {top3[1].level}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
+                <span className="text-slate-500">
+                  {activeBoard === 'alumni' ? 'Mentored' : 'Approved SOPs'}: <strong>{top3[1].upvotesReceived || top3[1].entriesCount}</strong>
+                </span>
+                <span className="font-black text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-xl">
+                  {top3[1].knowPoints.toLocaleString()} pts
+                </span>
               </div>
             </Card>
           )}
 
-          {/* 1st Place (Center Gold) */}
+          {/* 1st Place Champion */}
           {top3[0] && (
-            <Card className="p-6 order-1 md:order-2 flex flex-col justify-between border-amber-300 bg-gradient-to-b from-amber-50/70 via-white to-white relative shadow-md ring-2 ring-amber-400/30 md:-translate-y-2 transition">
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-white text-xs font-black border border-amber-300 flex items-center gap-1.5 shadow-md">
-                <Trophy className="w-3.5 h-3.5 text-yellow-100" />
-                <span>🥇 1st Place Champion</span>
+            <Card className="p-6 order-1 md:order-2 flex flex-col justify-between border-amber-300 bg-gradient-to-b from-amber-50/50 via-white to-white relative shadow-lg shadow-amber-500/10 ring-2 ring-amber-400/40">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] font-black uppercase tracking-wider px-3.5 py-1 rounded-full shadow flex items-center gap-1">
+                <Trophy className="w-3 h-3 text-white" /> Rank #1 Champion
               </div>
-              <div className="mt-3 text-center space-y-2">
+
+              <div className="text-center space-y-3 pt-2">
                 <div className="relative inline-block">
                   <img
                     src={top3[0].avatar}
                     alt={top3[0].name}
-                    className="w-20 h-20 rounded-3xl object-cover mx-auto ring-4 ring-amber-400 shadow-lg"
+                    className="w-24 h-24 rounded-2xl mx-auto object-cover ring-4 ring-amber-400 shadow-xl"
                   />
-                  <span className="absolute -bottom-2 -right-2 text-xl">👑</span>
+                  <span className="absolute -bottom-2.5 -right-2.5 w-9 h-9 rounded-full bg-amber-400 text-white font-black text-sm flex items-center justify-center border-2 border-white shadow">
+                    👑
+                  </span>
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-slate-900">{top3[0].name}</h3>
-                  <p className="text-xs text-indigo-600 font-bold">{top3[0].department}</p>
-                </div>
-                <div className="p-3 bg-amber-100/70 border border-amber-200 rounded-2xl">
-                  <span className="text-2xl font-black text-amber-950">{top3[0].knowPoints.toLocaleString()}</span>
-                  <span className="text-xs text-amber-800 font-bold ml-1.5">KnowPoints</span>
+                  <h3 className="font-black text-lg text-slate-900">{top3[0].name}</h3>
+                  {activeBoard === 'alumni' ? (
+                    <div className="mt-1">
+                      <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+                        <Briefcase className="w-3 h-3" /> {top3[0].currentCompany} ({top3[0].graduationYear})
+                      </span>
+                      <p className="text-xs text-slate-600 font-semibold mt-1">{top3[0].currentRole}</p>
+                    </div>
+                  ) : (
+                    <div className="mt-1">
+                      <span className="inline-flex items-center gap-1 text-xs font-black text-indigo-800 bg-indigo-100 px-2.5 py-0.5 rounded-full">
+                        <GraduationCap className="w-3 h-3" /> {top3[0].year}
+                      </span>
+                      <p className="text-xs text-slate-600 font-semibold mt-1">{top3[0].department}</p>
+                    </div>
+                  )}
+                  <span className="inline-block mt-2 text-xs font-black text-amber-700 bg-amber-100 border border-amber-200 px-3 py-0.5 rounded-full">
+                    {top3[0].level}
+                  </span>
                 </div>
               </div>
-              <div className="mt-3 pt-3 border-t border-amber-100 flex flex-wrap justify-center gap-1.5">
-                {top3[0].badges.map((b) => (
-                  <span key={b} className="text-[10px] font-bold bg-amber-50 border border-amber-200 text-amber-900 px-2 py-0.5 rounded-md">
-                    {b === 'Pioneer' ? '🌟' : b === 'Mentor' ? '🛡️' : '🏆'} {b}
-                  </span>
-                ))}
+
+              <div className="mt-4 pt-4 border-t border-amber-100 flex items-center justify-between text-xs">
+                <span className="text-slate-500 font-semibold">
+                  {activeBoard === 'alumni' ? 'Juniors Mentored' : 'Approved SOPs'}: <strong className="text-slate-800">{top3[0].upvotesReceived || top3[0].entriesCount}</strong>
+                </span>
+                <span className="font-black text-base text-amber-600 bg-amber-50 px-3 py-1 rounded-xl border border-amber-200">
+                  {top3[0].knowPoints.toLocaleString()} pts
+                </span>
               </div>
             </Card>
           )}
@@ -414,30 +804,41 @@ export function Leaderboard() {
           {/* 3rd Place */}
           {top3[2] && (
             <Card className="p-6 order-3 flex flex-col justify-between border-slate-200 bg-gradient-to-b from-slate-50/80 to-white relative hover:shadow-md transition">
-              <div className="absolute -top-3 left-6 px-3 py-1 rounded-full bg-amber-700 text-white text-xs font-black border border-amber-800 flex items-center gap-1 shadow-sm">
-                🥉 3rd Place
-              </div>
-              <div className="mt-2 text-center space-y-2">
-                <img
-                  src={top3[2].avatar}
-                  alt={top3[2].name}
-                  className="w-16 h-16 rounded-2xl object-cover mx-auto ring-4 ring-amber-700/20 shadow-md"
-                />
-                <div>
-                  <h3 className="text-base font-black text-slate-900">{top3[2].name}</h3>
-                  <p className="text-[11px] text-slate-500">{top3[2].department}</p>
-                </div>
-                <div className="p-2.5 bg-slate-100 rounded-xl">
-                  <span className="text-xl font-black text-slate-900">{top3[2].knowPoints.toLocaleString()}</span>
-                  <span className="text-xs text-slate-500 font-bold ml-1">KnowPoints</span>
-                </div>
-              </div>
-              <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap justify-center gap-1">
-                {top3[2].badges.map((b) => (
-                  <span key={b} className="text-[10px] font-bold bg-white border px-2 py-0.5 rounded-md shadow-2xs">
-                    {b === 'Pioneer' ? '🌟' : b === 'Mentor' ? '🛡️' : '🏆'} {b}
+              <div className="text-center space-y-3">
+                <div className="relative inline-block">
+                  <img
+                    src={top3[2].avatar}
+                    alt={top3[2].name}
+                    className="w-20 h-20 rounded-2xl mx-auto object-cover ring-4 ring-amber-700/40 shadow-md"
+                  />
+                  <span className="absolute -bottom-2.5 -right-2.5 w-8 h-8 rounded-full bg-amber-700/20 text-amber-900 font-black text-xs flex items-center justify-center border-2 border-white shadow">
+                    🥉
                   </span>
-                ))}
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">{top3[2].name}</h3>
+                  {activeBoard === 'alumni' ? (
+                    <p className="text-xs font-bold text-emerald-700 mt-0.5">
+                      {top3[2].currentCompany} • {top3[2].currentRole}
+                    </p>
+                  ) : (
+                    <p className="text-xs font-semibold text-slate-500 mt-0.5">
+                      {top3[2].year} • {top3[2].department}
+                    </p>
+                  )}
+                  <span className="inline-block mt-2 text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full">
+                    {top3[2].level}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
+                <span className="text-slate-500">
+                  {activeBoard === 'alumni' ? 'Mentored' : 'Approved SOPs'}: <strong>{top3[2].upvotesReceived || top3[2].entriesCount}</strong>
+                </span>
+                <span className="font-black text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-xl">
+                  {top3[2].knowPoints.toLocaleString()} pts
+                </span>
               </div>
             </Card>
           )}
@@ -445,73 +846,54 @@ export function Leaderboard() {
       </div>
 
       {/* ========================================================
-          POINTS RULES & BADGES SHOWCASE
+          RULES & SCORING BREAKDOWN
       ======================================================== */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* KnowPoints Rules Card */}
-        <Card className="lg:col-span-2 p-6 space-y-4">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
-              Scoring Mechanism
-            </span>
-            <h3 className="text-base font-black text-slate-900 mt-1.5">How to Earn KnowPoints</h3>
+      <Card className="p-6 border-slate-200">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-amber-500" />
+            <h3 className="font-bold text-sm text-slate-900">
+              {activeBoard === 'students' ? 'How Current Students Earn KnowPoints' : 'How Passed-Out Alumni Earn Impact Points'}
+            </h3>
           </div>
+          <span className="text-[11px] font-bold text-slate-400">Rules & Point Mechanics</span>
+        </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {POINT_RULES.map((rule, idx) => {
-              const Icon = rule.icon;
-              return (
-                <div key={idx} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-start gap-3">
-                  <div className={`p-2 rounded-xl flex-shrink-0 ${rule.bg}`}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {(activeBoard === 'students' ? STUDENT_POINT_RULES : ALUMNI_POINT_RULES).map((rule, idx) => {
+            const Icon = rule.icon;
+            return (
+              <div key={idx} className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-100 space-y-1.5 flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <div className={`p-1.5 rounded-lg ${rule.bg}`}>
                     <Icon className="w-4 h-4" />
                   </div>
-                  <div>
-                    <div className="flex items-center justify-between gap-1">
-                      <h4 className="text-xs font-bold text-slate-900">{rule.action}</h4>
-                      <span className="text-xs font-black text-emerald-600">{rule.points}</span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{rule.desc}</p>
-                  </div>
+                  <span className="text-xs font-black text-emerald-600">{rule.points}</span>
                 </div>
-              );
-            })}
-          </div>
-        </Card>
-
-        {/* Badges Showcase Card */}
-        <Card className="p-6 flex flex-col justify-between space-y-4">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
-              Institutional Badges
-            </span>
-            <h3 className="text-base font-black text-slate-900 mt-1.5">Earnable Badges</h3>
-          </div>
-
-          <div className="space-y-2.5">
-            {BADGE_DEFINITIONS.map((badge) => (
-              <div key={badge.id} className={`p-3 rounded-2xl border flex items-center gap-3 ${badge.border}`}>
-                <span className="text-2xl">{badge.icon}</span>
                 <div>
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-black">{badge.name}</h4>
-                    <span className="text-[10px] opacity-80 font-bold">{badge.holders} Holders</span>
-                  </div>
-                  <p className="text-[11px] opacity-90 mt-0.5">{badge.criteria}</p>
+                  <h4 className="font-bold text-xs text-slate-900 leading-tight">{rule.action}</h4>
+                  <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">{rule.desc}</p>
                 </div>
               </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+            );
+          })}
+        </div>
+      </Card>
 
       {/* ========================================================
-          SEMESTER LEADERBOARD TABLE & SEARCH
+          LEADERBOARD TABLE & SEARCH FILTER
       ======================================================== */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-black text-slate-900">Institutional Contributor Rankings</h2>
-            <p className="text-xs text-slate-500">Live verified point tallies & departmental breakdown</p>
+            <h2 className="text-lg font-black text-slate-900">
+              {activeBoard === 'students' ? '🎓 Junior Student Rankings Table' : '💼 Passed-Out Alumni Mentors Table'}
+            </h2>
+            <p className="text-xs text-slate-500">
+              {activeBoard === 'students'
+                ? 'Filtered for current 1st-4th year campus scholars'
+                : 'Filtered for graduated seniors, working professionals & industry fellows'}
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -521,8 +903,8 @@ export function Leaderboard() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search contributor..."
-                className="text-xs pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-500 shadow-2xs w-44 sm:w-56"
+                placeholder={activeBoard === 'students' ? 'Search student or branch...' : 'Search alumni or company (NVIDIA, Google)...'}
+                className="text-xs pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-500 shadow-2xs w-44 sm:w-60"
               />
             </div>
 
@@ -532,9 +914,8 @@ export function Leaderboard() {
               className="text-xs bg-white border border-slate-200 rounded-xl px-3 py-1.5 font-semibold text-slate-700 outline-none shadow-2xs"
             >
               <option value="All">All Departments</option>
-              <option value="Computer Science">Computer Science</option>
-              <option value="Information Technology">Information Technology</option>
-              <option value="Central Computing">Central Labs</option>
+              <option value="Computer Science">Computer Science (CSE)</option>
+              <option value="Information Technology">Information Technology (IT)</option>
               <option value="Electronics">Electronics (ECE)</option>
               <option value="Mechanical">Mechanical (ME)</option>
             </select>
@@ -547,16 +928,17 @@ export function Leaderboard() {
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-400 uppercase tracking-wider font-semibold">
                   <th className="py-3.5 px-4 text-center w-12">Rank</th>
-                  <th className="py-3.5 px-4">Contributor</th>
-                  <th className="py-3.5 px-4">Department & Level</th>
-                  <th className="py-3.5 px-4 text-center">Entries</th>
-                  <th className="py-3.5 px-4 text-center">Upvotes</th>
-                  <th className="py-3.5 px-4">Badges Earned</th>
-                  <th className="py-3.5 px-4 text-right">KnowPoints</th>
+                  <th className="py-3.5 px-4">{activeBoard === 'students' ? 'Junior Contributor' : 'Alumni Industry Mentor'}</th>
+                  <th className="py-3.5 px-4">{activeBoard === 'students' ? 'Department & Year' : 'Current Organization & Batch'}</th>
+                  <th className="py-3.5 px-4 text-center">{activeBoard === 'students' ? 'SOPs Authored' : 'Playbooks'}</th>
+                  <th className="py-3.5 px-4 text-center">{activeBoard === 'students' ? 'Upvotes' : 'Mentored'}</th>
+                  <th className="py-3.5 px-4">{activeBoard === 'students' ? 'Badges & T&P Status' : 'Badges & Privileges'}</th>
+                  <th className="py-3.5 px-4 text-right">Points</th>
+                  {activeBoard === 'alumni' && <th className="py-3.5 px-4 text-center">Referral Action</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredContributors.map((c) => (
+                {currentList.map((c) => (
                   <tr key={c.id} className="hover:bg-slate-50/70 transition">
                     <td className="py-3.5 px-4 text-center font-black text-sm">
                       {c.rank === 1 ? '🥇' : c.rank === 2 ? '🥈' : c.rank === 3 ? '🥉' : `#${c.rank}`}
@@ -575,8 +957,19 @@ export function Leaderboard() {
                     </td>
 
                     <td className="py-3.5 px-4">
-                      <p className="font-semibold text-slate-700">{c.department}</p>
-                      <p className="text-[10px] text-slate-400">{c.year}</p>
+                      {activeBoard === 'students' ? (
+                        <>
+                          <p className="font-semibold text-slate-700">{c.department}</p>
+                          <p className="text-[10px] text-slate-400">{c.year}</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-bold text-slate-900 flex items-center gap-1">
+                            <Briefcase className="w-3.5 h-3.5 text-emerald-600" /> {c.currentCompany}
+                          </p>
+                          <p className="text-[10px] text-slate-500">{c.currentRole} • {c.graduationYear}</p>
+                        </>
+                      )}
                     </td>
 
                     <td className="py-3.5 px-4 text-center font-bold text-slate-800">
@@ -588,12 +981,17 @@ export function Leaderboard() {
                     </td>
 
                     <td className="py-3.5 px-4">
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1 items-center">
                         {c.badges.map((b) => (
                           <span key={b} className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
-                            {b === 'Pioneer' ? '🌟' : b === 'Mentor' ? '🛡️' : '🏆'} {b}
+                            {b}
                           </span>
                         ))}
+                        {c.tpStatus && (
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                            🎯 {c.tpStatus}
+                          </span>
+                        )}
                       </div>
                     </td>
 
@@ -602,6 +1000,19 @@ export function Leaderboard() {
                         {c.knowPoints.toLocaleString()} pts
                       </span>
                     </td>
+
+                    {activeBoard === 'alumni' && (
+                      <td className="py-3.5 px-4 text-center">
+                        <button
+                          onClick={() => handleOpenAlumniRequest(c)}
+                          className="px-2.5 py-1.5 text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl transition flex items-center gap-1.5 mx-auto"
+                          title="Ask senior for referral or mock interview"
+                        >
+                          <Send className="w-3 h-3" />
+                          <span>Request Referral</span>
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -611,10 +1022,10 @@ export function Leaderboard() {
       </div>
 
       {/* ========================================================
-          RECENT POINTS ACTIVITY STREAM
+          RECENT ACTIVITY FEED (STUDENTS & ALUMNI)
       ======================================================== */}
       <div className="space-y-3">
-        <h3 className="text-sm font-bold text-slate-900">Recent Campus Point Transactions</h3>
+        <h3 className="text-sm font-bold text-slate-900">Recent Campus & Industry Mentorship Stream</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {RECENT_POINTS_FEED.map((item, idx) => (
             <div key={idx} className="p-3 bg-white border border-slate-200/80 rounded-2xl space-y-1 shadow-2xs">
@@ -630,7 +1041,7 @@ export function Leaderboard() {
       </div>
 
       {/* ========================================================
-          REFERRAL MODAL (+30 pts)
+          MODAL 1: REFERRAL INVITATION (+30 pts)
       ======================================================== */}
       {referralModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
@@ -638,10 +1049,10 @@ export function Leaderboard() {
             <div className="flex items-start justify-between border-b border-slate-100 pb-3">
               <div>
                 <span className="text-[10px] font-bold bg-amber-500 text-white px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                  +30 KnowPoints Reward
+                  +30 Points Reward
                 </span>
                 <h3 className="text-base font-black text-slate-900 mt-1">
-                  Refer a Peer or Contributor
+                  Invite a Junior or Alumni Contributor
                 </h3>
               </div>
               <button onClick={() => setReferralModalOpen(false)} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">
@@ -666,20 +1077,20 @@ export function Leaderboard() {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Or Send Invite via Campus Email *</label>
+                <label className="block font-bold text-slate-700 mb-1">Send Invite via Email *</label>
                 <input
                   type="email"
                   required
                   value={referralEmail}
                   onChange={(e) => setReferralEmail(e.target.value)}
-                  placeholder="classmate.name@campus.edu"
+                  placeholder="peer.name@campus.edu or alumni@company.com"
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-amber-500 font-semibold"
                 />
               </div>
 
               <div className="p-3 bg-amber-50 rounded-xl text-amber-900 text-[11px] space-y-1">
-                <p className="font-bold">How the referral bonus works:</p>
-                <p>When your referred peer joins and authors their first approved lab tip or placement insight, +30 KnowPoints are credited to your account instantly.</p>
+                <p className="font-bold">How points are awarded:</p>
+                <p>When your invited classmate or senior authors their first approved lab note or placement guide, +30 KnowPoints are credited to your account.</p>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
@@ -688,7 +1099,107 @@ export function Leaderboard() {
                 </Button>
                 <Button size="sm" type="submit" className="bg-amber-600 hover:bg-amber-700 text-white font-bold">
                   <Send className="w-3.5 h-3.5 mr-1" />
-                  Send Invitation
+                  Send Invite
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          MODAL 2: REQUEST 1-ON-1 ALUMNI REFERRAL / MOCK INTERVIEW
+      ======================================================== */}
+      {alumniReferralModalOpen && selectedAlumnus && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <img
+                  src={selectedAlumnus.avatar}
+                  alt={selectedAlumnus.name}
+                  className="w-11 h-11 rounded-2xl object-cover ring-2 ring-emerald-400"
+                />
+                <div>
+                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    {selectedAlumnus.currentCompany} • {selectedAlumnus.graduationYear}
+                  </span>
+                  <h3 className="text-base font-black text-slate-900 mt-0.5">
+                    Request Mentorship from {selectedAlumnus.name}
+                  </h3>
+                </div>
+              </div>
+              <button onClick={() => setAlumniReferralModalOpen(false)} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitAlumniRequest} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Type of Assistance Requested *</label>
+                <select
+                  value={referralForm.requestType}
+                  onChange={(e) => setReferralForm({ ...referralForm, requestType: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold outline-none focus:border-indigo-500"
+                >
+                  <option value="Direct Company Referral">🎯 Direct Job / Internship Referral at {selectedAlumnus.currentCompany}</option>
+                  <option value="45-Min Technical Mock Interview">🗣️ 45-Min Technical Mock Interview (System Design / Coding)</option>
+                  <option value="Resume & Portfolio Critique">📄 Resume & Portfolio Roast / Critique</option>
+                  <option value="SOP Technical Guidance">💡 Guidance on Lab Project / Final Year Thesis</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Your Target Role & Batch *</label>
+                <input
+                  type="text"
+                  required
+                  value={referralForm.targetRole}
+                  onChange={(e) => setReferralForm({ ...referralForm, targetRole: e.target.value })}
+                  placeholder="e.g. SDE-1 / Robotics Intern (Batch of 2026)"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Resume or GitHub Profile URL <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="url"
+                  required
+                  value={referralForm.resumeLink}
+                  onChange={(e) => setReferralForm({ ...referralForm, resumeLink: e.target.value })}
+                  placeholder="https://github.com/yourname or Google Drive resume link"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Personal Note to Senior</label>
+                <textarea
+                  rows={3}
+                  value={referralForm.note}
+                  onChange={(e) => setReferralForm({ ...referralForm, note: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 leading-relaxed"
+                  placeholder="Mention any specific project or question you want to discuss..."
+                />
+              </div>
+
+              <div className="p-3 bg-indigo-50/70 border border-indigo-200/80 rounded-xl text-indigo-900 text-[11px] space-y-1">
+                <p className="font-bold">✨ Two-Way Ecosystem Guarantee:</p>
+                <p>
+                  Because you reached the required points threshold on KnowPass, this request is prioritized in <strong>{selectedAlumnus.name}</strong>'s referral inbox. If you get hired, your senior also receives their corporate referral bonus!
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <Button variant="outline" size="sm" type="button" onClick={() => setAlumniReferralModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button size="sm" type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1.5">
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Send Request to Senior</span>
                 </Button>
               </div>
             </form>

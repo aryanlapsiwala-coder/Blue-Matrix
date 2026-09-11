@@ -20,7 +20,8 @@ import {
   Cpu,
   ShieldAlert,
   Flame,
-  Star
+  Star,
+  Briefcase
 } from 'lucide-react';
 
 export function Dashboard() {
@@ -172,15 +173,15 @@ export function Dashboard() {
         </div>
       )}
 
-      {role === ROLES.TECHNICIAN && (
+      {role === ROLES.ALUMNI && (
         <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 sm:p-5 flex items-start gap-4">
           <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
-            <Cpu className="w-5 h-5" />
+            <Briefcase className="w-5 h-5" />
           </div>
           <div>
-            <h4 className="text-sm font-bold text-emerald-950">Lab SOP & Equipment Maintenance</h4>
+            <h4 className="text-sm font-bold text-emerald-950">Alumni Industry Mentor Hub</h4>
             <p className="text-xs text-emerald-800/80 mt-0.5">
-              New maintenance schedule uploaded for Advanced Computing Cluster 03. Please update troubleshooting guides for CUDA 12.8 upgrade.
+              Welcome back to your Alma Mater! You have lifetime access to the campus research library proxy, and juniors in your department are actively requesting production runbooks & placement mentorship.
             </p>
           </div>
         </div>
