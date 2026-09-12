@@ -178,6 +178,109 @@ export function Privileges() {
     setTimeout(() => setMockToast(false), 5000);
   };
 
+  // Alumni Talent Scout & Citation Modals State
+  const [scoutModalOpen, setScoutModalOpen] = useState(false);
+  const [juniorCandidates, setJuniorCandidates] = useState([]);
+  const [corporateReferrals, setCorporateReferrals] = useState([]);
+  const [scoutReferToast, setScoutReferToast] = useState(false);
+  const [lastReferredJunior, setLastReferredJunior] = useState('');
+
+  const loadAlumniScoutData = () => {
+    setJuniorCandidates(alumniService.getTopJuniorCandidates());
+    if (user?.email) {
+      setCorporateReferrals(alumniService.getCorporateReferrals(user.email));
+    }
+  };
+
+  useEffect(() => {
+    loadAlumniScoutData();
+    const handleCorp = () => loadAlumniScoutData();
+    window.addEventListener('knowpass-corporate-referral-created', handleCorp);
+    return () => window.removeEventListener('knowpass-corporate-referral-created', handleCorp);
+  }, [user?.email]);
+
+  const handleReferJuniorCandidate = (candidate) => {
+    const bonus = user?.currentCompany?.toLowerCase().includes('google')
+      ? '₹1,20,000'
+      : user?.currentCompany?.toLowerCase().includes('nvidia')
+      ? '₹1,50,000'
+      : '₹1,00,000';
+
+    alumniService.referCandidate({
+      alumnus: user,
+      candidate,
+      referralBonus: bonus,
+    });
+
+    if (awardPoints) {
+      awardPoints(50, `Submitted direct corporate referral for ${candidate.name} at ${user?.currentCompany || 'Tech Corp'}`);
+    }
+
+    setLastReferredJunior(candidate.name);
+    setScoutReferToast(true);
+    loadAlumniScoutData();
+    setTimeout(() => setScoutReferToast(false), 4500);
+  };
+
+  const handleDownloadAlumniCitation = () => {
+    const certId = `ALUMNI-VIP-${user?.graduationYear ? user.graduationYear.replace(/\s+/g, '') : '2023'}-${Math.floor(10000 + Math.random() * 90000)}`;
+    const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const citationDoc = `# 🏛️ INSTITUTIONAL BOARD OF TRUSTEES & GLOBAL ALUMNI SENATE
+## OFFICIAL DISTINGUISHED ALUMNI KNOWLEDGE BUILDER CITATION & VIP CAMPUS CREDENTIAL
+
+**Citation UID:** \`${certId}\`  
+**Date of Issuance:** ${dateStr}  
+**Accreditation Framework:** National Institutional Ranking & Global Academic Continuity Charter
+
+---
+
+### TO WHOMSOEVER IT MAY CONCERN
+
+The University Senate and Directorate of Corporate Relations hereby officially confers upon:
+
+## **${(user?.name || 'Distinguished Alumnus').toUpperCase()}**
+**Class Batch:** ${user?.graduationYear || 'Class of 2023'}  
+**Affiliated Corporation:** ${user?.currentCompany || 'NVIDIA / High-Tech Industry'}  
+**Industry Designatory Role:** Senior Engineering / Technical Mentor  
+**Department of Heritage:** ${user?.department || 'Computer Science & Engineering'}
+
+the official honorific of:
+### 🎖️ **"DISTINGUISHED CAMPUS KNOWLEDGE BUILDER & CORPORATE PATRON"**
+
+---
+
+### 🌟 Endorsed VIP Campus Privileges & Rights:
+1. **VIP Guest of Honor & Paid Jury Accreditation:** Priority invitation with official honorariums as Hackathon / Final-Year Capstone Jury Chairman.
+2. **First-Look Corporate Referral Pipeline:** Direct talent scout privileges to review and refer top 10 percentile pre-vetted campus scholars into corporate hiring pipelines (Referral bonus eligibility: ₹30,000 – ₹1,50,000 per placed candidate).
+3. **Institutional Research & Library Proxy:** Lifetime access to IEEE, ACM Digital Library proxies, and university research facilities.
+4. **Annual Convocation Stage Citation:** Permanent commemorative roll of honor in the University Auditorium Hall of Fame.
+
+---
+
+### Certified Institutional Signatories:
+
+**Prof. (Dr.) Sarah Jenkins**  
+*Chancellor & Chair of Academic Council*  
+KnowPass Global Academic Continuity Network
+
+**Dr. Rajesh Verma**  
+*Director of Alumni Affairs & Corporate Relations*
+
+*Official Seal of Heritage & Distinguished Alumni Registry Verification.*
+`;
+
+    const blob = new Blob([citationDoc], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Alumni_Convocation_Citation_${(user?.name || 'Alumnus').replace(/\s+/g, '_')}.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   useEffect(() => {
     if (isAlumni) {
       setActiveTab('alumni');
@@ -443,14 +546,70 @@ export function Privileges() {
                     </Button>
                   )
                 ) : (
-                  <span className="text-indigo-600 font-bold flex items-center gap-1">
-                    Active Privilege <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                  </span>
+                  idx === 0 ? (
+                    <Button
+                      size="sm"
+                      onClick={() => setScoutModalOpen(true)}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-1.5 px-3 rounded-xl gap-1 shadow-xs"
+                    >
+                      <span>Scout Top Juniors</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={handleDownloadAlumniCitation}
+                      className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs py-1.5 px-3 rounded-xl gap-1.5 shadow-xs"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Alumni Citation (.md)</span>
+                    </Button>
+                  )
                 )}
               </div>
             </div>
           ))}
         </div>
+
+        {/* Corporate Referrals Tracker Drawer for Alumni */}
+        {activeTab === 'alumni' && corporateReferrals.length > 0 && (
+          <div className="p-5 bg-emerald-50/70 border border-emerald-200 rounded-3xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-emerald-700" />
+                <h4 className="text-xs font-black uppercase tracking-wider text-emerald-950">
+                  My Active Corporate Referrals Pipeline ({corporateReferrals.length} Juniors Referred)
+                </h4>
+              </div>
+              <span className="text-[10px] font-bold text-emerald-800 bg-white border border-emerald-200 px-2.5 py-0.5 rounded-full shadow-2xs">
+                Referral Bonus Pool: ₹{corporateReferrals.length * 1.5} Lakhs Potential
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {corporateReferrals.map((cr) => (
+                <div key={cr.id} className="p-3 bg-white border border-emerald-100 rounded-xl shadow-2xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800">
+                      💰 {cr.referralBonus}
+                    </span>
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200">
+                      ROUTED TO HR
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-900">{cr.candidateName}</p>
+                    <p className="text-[10px] text-slate-500">{cr.candidateDomain}</p>
+                  </div>
+                  <div className="flex items-center justify-between text-[9px] text-slate-400 pt-1.5 border-t border-slate-50">
+                    <span>Score: {cr.candidatePoints} pts</span>
+                    <span>{new Date(cr.submittedAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Real-Time Mentorship & Referrals Pipeline Tracker (shown when on students tab) */}
         {activeTab === 'students' && (myReferralRequests.length > 0 || myMockInterviews.length > 0) && (
@@ -870,6 +1029,134 @@ export function Privileges() {
             <p className="text-xs font-bold">1-on-1 Mock Interview Confirmed!</p>
             <p className="text-[11px] text-emerald-200">
               Meeting link generated for {mockDate} with {mockMentor?.name}.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          ALUMNI TALENT SCOUT MODAL (DIRECT CORPORATE REFERRALS)
+      ======================================================== */}
+      {scoutModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-2xl w-full my-8 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-950 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl p-2 rounded-xl bg-white/10 border border-white/20">💰</span>
+                <div>
+                  <h3 className="font-extrabold text-base sm:text-lg">
+                    Corporate Talent Scout & Referral Pipeline
+                  </h3>
+                  <p className="text-[11px] text-emerald-200">
+                    Direct access to pre-vetted campus talent • Potential Internal Bonus: ₹30k–₹1.5L per hire
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setScoutModalOpen(false)}
+                className="p-1.5 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-4 text-xs">
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-950 rounded-xl flex items-center justify-between">
+                <div>
+                  <p className="font-bold text-slate-900">
+                    Referring For: <strong>{user?.currentCompany || 'NVIDIA'}</strong>
+                  </p>
+                  <p className="text-[11px] text-emerald-700">
+                    Internal Employee Referral Program: <strong>₹1,00,000 – ₹1,50,000</strong> on successful candidate onboarding.
+                  </p>
+                </div>
+                <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-emerald-600 text-white shadow-2xs shrink-0">
+                  Pre-Vetted
+                </span>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-emerald-600" />
+                  <span>Top-Ranked Merit Scholars Qualified for Industry Referral ({juniorCandidates.length})</span>
+                </h4>
+
+                <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                  {juniorCandidates.map((candidate) => {
+                    const isAlreadyReferred = corporateReferrals.some((cr) => cr.candidateId === candidate.id);
+                    return (
+                      <div
+                        key={candidate.id}
+                        className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-emerald-300 transition shadow-2xs"
+                      >
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={candidate.avatar}
+                            alt={candidate.name}
+                            className="w-11 h-11 rounded-full object-cover border-2 border-emerald-200 shrink-0"
+                          />
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h5 className="font-extrabold text-slate-900 text-sm">{candidate.name}</h5>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                Rank #{candidate.rank}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 font-semibold">{candidate.domain} &bull; {candidate.department}</p>
+                            <p className="text-[10px] text-emerald-700 font-medium line-clamp-1 mt-0.5">
+                              ⭐ {candidate.topContribution}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
+                          <span className="text-[11px] font-bold text-slate-600">
+                            {candidate.knowPoints} KnowPoints
+                          </span>
+                          {isAlreadyReferred ? (
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-xl flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Referred to HR</span>
+                            </span>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() => handleReferJuniorCandidate(candidate)}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1 px-3 rounded-xl gap-1 shadow-xs"
+                            >
+                              <DollarSign className="w-3.5 h-3.5 text-amber-200" />
+                              <span>Refer Candidate (+50 pts)</span>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[11px] text-slate-400">
+                  Direct candidate dossiers are cryptographically verified via KnowPass Academic Index.
+                </span>
+                <Button variant="outline" size="sm" onClick={() => setScoutModalOpen(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Success Toast for Corporate Referral */}
+      {scoutReferToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-emerald-900 text-white px-5 py-3.5 rounded-2xl shadow-xl border border-emerald-700 flex items-center gap-3 animate-in slide-in-from-bottom-5">
+          <DollarSign className="w-5 h-5 text-amber-300" />
+          <div>
+            <p className="text-xs font-bold">Referral Submitted to Corporate HR! (+50 pts)</p>
+            <p className="text-[11px] text-emerald-200">
+              {lastReferredJunior} has been queued into the {user?.currentCompany || 'NVIDIA'} talent pipeline.
             </p>
           </div>
         </div>

@@ -1,4 +1,4 @@
-﻿import { pushCampusNotification } from './notificationService';
+import { pushCampusNotification } from './notificationService';
 
 export const VERIFIED_ALUMNI_MENTORS = [
   {
@@ -182,4 +182,120 @@ export const alumniService = {
 
     return newReq;
   },
+
+  getTopJuniorCandidates: () => [
+    {
+      id: 's1',
+      name: 'Alex Chen',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      department: 'Computer Science & Engineering',
+      year: '4th Year (Senior)',
+      knowPoints: 2480,
+      domain: 'Distributed Systems & Go / C++',
+      rank: 1,
+      matchRole: 'Software Engineer (SDE-1)',
+      topContribution: 'Google & Microsoft Campus Placement: System Design Playbook',
+      email: 'alex.chen@campus.edu',
+      status: 'AVAILABLE_FOR_REFERRAL',
+    },
+    {
+      id: 's2',
+      name: 'Sneha Reddy',
+      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
+      department: 'Electronics & Communication',
+      year: '3rd Year (Junior)',
+      knowPoints: 2120,
+      domain: 'Verilog FPGA & Silicon Verification',
+      rank: 2,
+      matchRole: 'Embedded Systems & FPGA Engineer',
+      topContribution: 'RISC-V 5-Stage Core in Verilog with Branch Prediction on Artix-7',
+      email: 'sneha.reddy@campus.edu',
+      status: 'AVAILABLE_FOR_REFERRAL',
+    },
+    {
+      id: 's3',
+      name: 'David Kim',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
+      department: 'Computer Science & Engineering',
+      year: '4th Year (Senior)',
+      knowPoints: 1780,
+      domain: 'Kubernetes, Cloud & SLURM',
+      rank: 3,
+      matchRole: 'Cloud Infrastructure & SRE',
+      topContribution: 'Bare-Metal Kubernetes Cluster Provisioning & SLURM Setup SOP',
+      email: 'david.kim@campus.edu',
+      status: 'AVAILABLE_FOR_REFERRAL',
+    },
+    {
+      id: 's4',
+      name: 'Rohan Sharma',
+      avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150',
+      department: 'Mechanical Engineering',
+      year: '4th Year (Senior)',
+      knowPoints: 1460,
+      domain: 'Robotics, ANSYS & CFD',
+      rank: 4,
+      matchRole: 'Robotics Hardware & Simulation Engineer',
+      topContribution: 'ANSYS Fluent CFD Aerodynamic Meshing & Formula Student Chassis',
+      email: 'rohan.sharma@campus.edu',
+      status: 'AVAILABLE_FOR_REFERRAL',
+    },
+  ],
+
+  referCandidate: ({ alumnus, candidate, referralBonus = '₹1,00,000' }) => {
+    const referralRecord = {
+      id: `corp_ref_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      alumnusName: alumnus.name || 'Alumnus',
+      alumnusEmail: alumnus.email || '',
+      alumnusCompany: alumnus.currentCompany || 'NVIDIA',
+      candidateId: candidate.id,
+      candidateName: candidate.name,
+      candidateEmail: candidate.email,
+      candidateDomain: candidate.domain,
+      candidatePoints: candidate.knowPoints,
+      referralBonus,
+      stage: 'INTERNAL_REFERRAL_SUBMITTED', // INTERNAL_REFERRAL_SUBMITTED, INTERVIEW_ROUND_1, OFFER_MADE_BONUS_EARNED
+      submittedAt: new Date().toISOString(),
+    };
+
+    try {
+      const key = 'knowpass_alumni_corporate_referrals';
+      const existing = JSON.parse(localStorage.getItem(key) || '[]');
+      localStorage.setItem(key, JSON.stringify([referralRecord, ...existing]));
+
+      // Notify candidate
+      pushCampusNotification(candidate.email, {
+        title: `Corporate Referral Submitted! 💰`,
+        desc: `${alumnus.name || 'An Alumnus'} referred you for ${candidate.matchRole} at ${alumnus.currentCompany || 'Tech Corp'}!`,
+        type: 'points',
+        link: '/profile',
+      });
+
+      // Notify alumnus
+      pushCampusNotification(alumnus.email, {
+        title: `Referral Routed to Corporate Portal! 🎉`,
+        desc: `You submitted ${candidate.name} to ${alumnus.currentCompany || 'NVIDIA'} referral pipeline (Potential Bonus: ${referralBonus}).`,
+        type: 'points',
+        link: '/profile',
+      });
+
+      window.dispatchEvent(new CustomEvent('knowpass-corporate-referral-created', { detail: referralRecord }));
+    } catch (e) {
+      console.warn('Error recording corporate referral:', e);
+    }
+
+    return referralRecord;
+  },
+
+  getCorporateReferrals: (alumnusEmail) => {
+    try {
+      const key = 'knowpass_alumni_corporate_referrals';
+      const all = JSON.parse(localStorage.getItem(key) || '[]');
+      if (!alumnusEmail) return all;
+      return all.filter((r) => r.alumnusEmail?.toLowerCase() === alumnusEmail.toLowerCase());
+    } catch {
+      return [];
+    }
+  },
 };
+
