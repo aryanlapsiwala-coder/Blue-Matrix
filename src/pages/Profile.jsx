@@ -10,6 +10,7 @@ import { GlobalDnsCloudModal } from '../components/common/GlobalDnsCloudModal';
 import { ImageCropModal } from '../components/common/ImageCropModal';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { knowledgeService, getMyContributedIds, getAliasHistory } from '../services/knowledgeService';
+import { alumniService, VERIFIED_ALUMNI_MENTORS } from '../services/alumniService';
 import {
   User,
   ShieldCheck,
@@ -120,6 +121,117 @@ export function Profile() {
   ]);
   const [shareQuestions, setShareQuestions] = useState('');
   const [shareTips, setShareTips] = useState('');
+
+  // Referral Token & Mock Interview Interactive States
+  const [referralModalOpen, setReferralModalOpen] = useState(false);
+  const [mockModalOpen, setMockModalOpen] = useState(false);
+  const [selectedMentor, setSelectedMentor] = useState(VERIFIED_ALUMNI_MENTORS[0]);
+  const [referralCompany, setReferralCompany] = useState('Google Cloud');
+  const [referralRole, setReferralRole] = useState('Software Engineer (SDE-1)');
+  const [referralResumeLink, setReferralResumeLink] = useState('https://drive.google.com/knowpass-candidate-resume');
+  const [referralNotes, setReferralNotes] = useState('');
+  const [referralToast, setReferralToast] = useState(false);
+
+  // Mock Interview State
+  const [mockMentor, setMockMentor] = useState(VERIFIED_ALUMNI_MENTORS[0]);
+  const [mockTargetRole, setMockTargetRole] = useState('Software Engineer (SDE-1)');
+  const [mockDate, setMockDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 2);
+    return d.toISOString().split('T')[0];
+  });
+  const [mockSlot, setMockSlot] = useState(VERIFIED_ALUMNI_MENTORS[0].availableSlots[0]);
+  const [mockFocus, setMockFocus] = useState('Algorithms, Concurrency & System Design Bar Raiser');
+  const [mockToast, setMockToast] = useState(false);
+
+  // Active Applications & Schedules Tracker
+  const [myReferralRequests, setMyReferralRequests] = useState([]);
+  const [myMockInterviews, setMyMockInterviews] = useState([]);
+
+  const loadMentorshipData = useCallback(() => {
+    if (user?.email) {
+      setMyReferralRequests(alumniService.getReferralRequests(user.email));
+      setMyMockInterviews(alumniService.getMockInterviewRequests(user.email));
+    }
+  }, [user?.email]);
+
+  useEffect(() => {
+    loadMentorshipData();
+    const handleRefCreated = () => loadMentorshipData();
+    const handleMockCreated = () => loadMentorshipData();
+    window.addEventListener('knowpass-referral-created', handleRefCreated);
+    window.addEventListener('knowpass-mock-interview-created', handleMockCreated);
+    return () => {
+      window.removeEventListener('knowpass-referral-created', handleRefCreated);
+      window.removeEventListener('knowpass-mock-interview-created', handleMockCreated);
+    };
+  }, [loadMentorshipData]);
+
+  const handleOpenReferralModal = (mentor = null) => {
+    if (mentor) {
+      setSelectedMentor(mentor);
+      setReferralCompany(mentor.currentCompany);
+      setReferralRole(mentor.targetRoles[0] || 'Software Engineer (SDE-1)');
+    }
+    setReferralModalOpen(true);
+  };
+
+  const handleOpenMockModal = (mentor = null) => {
+    if (mentor) {
+      setMockMentor(mentor);
+      setMockTargetRole(mentor.targetRoles[0] || 'Software Engineer (SDE-1)');
+      setMockSlot(mentor.availableSlots[0]);
+    }
+    setMockModalOpen(true);
+  };
+
+  const handleSubmitReferral = (e) => {
+    e.preventDefault();
+    const currentPts = Number(user?.knowPoints) || 20;
+    if (currentPts < 50) {
+      alert(`Insufficient KnowPoints! A Fast-Track Referral Token requires 50 pts. Your current balance is ${currentPts} pts. Publish a lab SOP or solve campus bugs to earn more points!`);
+      return;
+    }
+
+    // Deduct 50 pts
+    if (awardPoints) {
+      awardPoints(-50, `Redeemed Fast-Track Referral Token for ${selectedMentor.name} (${referralCompany})`);
+    }
+
+    // Submit request via alumniService
+    alumniService.submitReferralRequest({
+      student: user,
+      mentor: selectedMentor,
+      targetCompany: referralCompany,
+      targetRole: referralRole,
+      resumeUrl: referralResumeLink,
+      notes: referralNotes,
+    });
+
+    setReferralModalOpen(false);
+    setReferralToast(true);
+    setReferralNotes('');
+    loadMentorshipData();
+    setTimeout(() => setReferralToast(false), 5000);
+  };
+
+  const handleSubmitMockInterview = (e) => {
+    e.preventDefault();
+    // Schedule mock interview
+    alumniService.scheduleMockInterview({
+      student: user,
+      mentor: mockMentor,
+      targetRole: mockTargetRole,
+      preferredDate: mockDate,
+      timeSlot: mockSlot,
+      interviewFocus: mockFocus,
+    });
+
+    setMockModalOpen(false);
+    setMockToast(true);
+    loadMentorshipData();
+    setTimeout(() => setMockToast(false), 5000);
+  };
 
   const loadAlumniPlaybooks = useCallback(() => {
     try {
@@ -1130,13 +1242,15 @@ International Higher Education Knowledge Alliance
                     <span className="text-[11px] text-slate-500 font-semibold">
                       Cost: <strong>50 pts / Token</strong> (Your balance: {user?.knowPoints || 20} pts)
                     </span>
-                    <Link
-                      to={ROUTES.LEADERBOARD}
-                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                    <Button
+                      size="sm"
+                      onClick={() => handleOpenReferralModal()}
+                      className="text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-1.5 px-3 flex items-center gap-1 shadow-xs"
                     >
+                      <Zap className="w-3.5 h-3.5 text-amber-300" />
                       <span>Connect with Alumni</span>
                       <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                    </Button>
                   </div>
                 </div>
 
@@ -1183,18 +1297,93 @@ International Higher Education Knowledge Alliance
 
                   <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
                     <span className="text-[11px] text-slate-500 font-semibold">
-                      Eligibility: <strong className="text-emerald-700">Active Leaderboard Contributor</strong>
+                      Eligibility: <strong className="text-emerald-700">Active Contributor (Unlocked)</strong>
                     </span>
-                    <Link
-                      to={ROUTES.PLACEMENTS}
-                      className="text-xs font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1"
+                    <Button
+                      size="sm"
+                      onClick={() => handleOpenMockModal()}
+                      className="text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-1.5 px-3 flex items-center gap-1 shadow-xs"
                     >
-                      <span>Explore Target Roles</span>
+                      <Calendar className="w-3.5 h-3.5 text-emerald-200" />
+                      <span>Schedule Mock Interview</span>
                       <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                    </Button>
                   </div>
                 </div>
               </div>
+
+              {/* Real-Time Mentorship & Referrals Pipeline Tracker */}
+              {(myReferralRequests.length > 0 || myMockInterviews.length > 0) && (
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-indigo-600" />
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                        My Active Alumni Requests & Interview Bookings ({myReferralRequests.length + myMockInterviews.length})
+                      </h4>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      Live Synced
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Referrals List */}
+                    {myReferralRequests.map((req) => (
+                      <div key={req.id} className="p-3 bg-white border border-indigo-100 rounded-xl shadow-2xs space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700">
+                            ⚡ Referral Token
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                            {req.status.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                        <div className="text-xs">
+                          <p className="font-bold text-slate-900">{req.targetCompany} &bull; {req.targetRole}</p>
+                          <p className="text-[11px] text-slate-500">Mentor: {req.mentorName} ({req.mentorRole})</p>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-50">
+                          <span>Token: -50 pts</span>
+                          <span>Submitted: {new Date(req.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Mock Interviews List */}
+                    {myMockInterviews.map((m) => (
+                      <div key={m.id} className="p-3 bg-white border border-emerald-100 rounded-xl shadow-2xs space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700">
+                            🎯 1-on-1 Mock Interview
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            CONFIRMED
+                          </span>
+                        </div>
+                        <div className="text-xs">
+                          <p className="font-bold text-slate-900">{m.targetRole}</p>
+                          <p className="text-[11px] text-slate-500">Alumnus: {m.mentorName} ({m.mentorCompany})</p>
+                          <p className="text-[11px] text-indigo-600 font-semibold mt-0.5">📅 {m.preferredDate} &bull; {m.timeSlot}</p>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] pt-1 border-t border-slate-50">
+                          <a
+                            href={m.meetingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                          >
+                            <span>Join Meeting</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                          <span className="text-slate-400">Duration: 45m</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}
@@ -1800,6 +1989,330 @@ International Higher Education Knowledge Alliance
         onClose={() => setCropModalOpen(false)}
         onCropComplete={handleCropComplete}
       />
+
+      {/* ========================================================
+          FAST-TRACK REFERRAL TOKEN MODAL (CONNECT WITH ALUMNI)
+      ======================================================== */}
+      {referralModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-xl w-full my-8 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 bg-gradient-to-r from-indigo-900 via-indigo-800 to-indigo-950 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl p-2 rounded-xl bg-white/10 border border-white/20">⚡</span>
+                <div>
+                  <h3 className="font-extrabold text-base sm:text-lg">
+                    Redeem Fast-Track Referral Token
+                  </h3>
+                  <p className="text-[11px] text-indigo-200">
+                    Direct Resume Review & Referral from Verified Industry Alumni
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReferralModalOpen(false)}
+                className="p-1.5 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitReferral} className="p-5 sm:p-6 space-y-4 text-xs">
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-amber-900">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-600" />
+                  <span className="font-bold">Token Cost: 50 KnowPoints</span>
+                </div>
+                <span className="font-semibold text-[11px]">
+                  Your Balance: <strong>{user?.knowPoints || 20} pts</strong>
+                </span>
+              </div>
+
+              {/* Select Mentor */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Select Verified Senior / Alumni Mentor *
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {VERIFIED_ALUMNI_MENTORS.map((m) => (
+                    <div
+                      key={m.id}
+                      onClick={() => {
+                        setSelectedMentor(m);
+                        setReferralCompany(m.currentCompany);
+                        setReferralRole(m.targetRoles[0]);
+                      }}
+                      className={`p-2.5 rounded-xl border cursor-pointer flex items-center gap-2.5 transition ${
+                        selectedMentor?.id === m.id
+                          ? 'border-indigo-600 bg-indigo-50/70 shadow-xs'
+                          : 'border-slate-200 hover:border-slate-300 bg-white'
+                      }`}
+                    >
+                      <img
+                        src={m.avatar}
+                        alt={m.name}
+                        className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-bold text-slate-900 truncate leading-tight">{m.name}</h4>
+                        <p className="text-[10px] text-indigo-700 font-semibold truncate">{m.currentCompany}</p>
+                        <p className="text-[9px] text-slate-400 truncate">{m.currentRole}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Company and Role */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Target Company</label>
+                  <input
+                    type="text"
+                    required
+                    value={referralCompany}
+                    onChange={(e) => setReferralCompany(e.target.value)}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Target Role</label>
+                  <input
+                    type="text"
+                    required
+                    value={referralRole}
+                    onChange={(e) => setReferralRole(e.target.value)}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500 font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* Resume / Portfolio Link */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Resume or Portfolio Link (Google Drive / GitHub / PDF) *
+                </label>
+                <input
+                  type="url"
+                  required
+                  value={referralResumeLink}
+                  onChange={(e) => setReferralResumeLink(e.target.value)}
+                  placeholder="https://drive.google.com/your-resume"
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500 font-mono text-xs"
+                />
+              </div>
+
+              {/* Message to Alumnus */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Brief Message & Specific Areas for Review
+                </label>
+                <textarea
+                  rows={3}
+                  value={referralNotes}
+                  onChange={(e) => setReferralNotes(e.target.value)}
+                  placeholder="Hi senior, I have authored 2 lab SOPs in distributed systems and solved concurrency bug fixes. I am applying for the SDE-1 opening and would love your referral or feedback!"
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500"
+                />
+              </div>
+
+              {/* Trust Badge */}
+              <div className="p-2.5 bg-indigo-50/70 border border-indigo-200 rounded-xl text-[11px] text-indigo-900 flex items-start gap-2">
+                <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Anti-Spam Guaranteed:</strong> Your verified KnowPass merit score ({user?.knowPoints || 20} pts) and published articles will be attached automatically so the alumnus knows this is a genuine high-achiever request.
+                </span>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+                <Button variant="outline" size="sm" type="button" onClick={() => setReferralModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  type="submit"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-1.5 shadow-md shadow-indigo-600/20"
+                >
+                  <Zap className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Redeem Token & Send Request (-50 pts)</span>
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          1-ON-1 MOCK TECHNICAL INTERVIEW SCHEDULING MODAL
+      ======================================================== */}
+      {mockModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-xl w-full my-8 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 bg-gradient-to-r from-emerald-900 via-emerald-800 to-emerald-950 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl p-2 rounded-xl bg-white/10 border border-white/20">🎯</span>
+                <div>
+                  <h3 className="font-extrabold text-base sm:text-lg">
+                    Schedule 1-on-1 Mock Technical Interview
+                  </h3>
+                  <p className="text-[11px] text-emerald-200">
+                    45-Minute Live Problem Solving & Hiring Bar Assessment with Alumni
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMockModalOpen(false)}
+                className="p-1.5 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitMockInterview} className="p-5 sm:p-6 space-y-4 text-xs">
+              {/* Select Mentor */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Select Alumnus Interviewer *
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {VERIFIED_ALUMNI_MENTORS.map((m) => (
+                    <div
+                      key={m.id}
+                      onClick={() => {
+                        setMockMentor(m);
+                        setMockTargetRole(m.targetRoles[0]);
+                        setMockSlot(m.availableSlots[0]);
+                      }}
+                      className={`p-2.5 rounded-xl border cursor-pointer flex items-center gap-2.5 transition ${
+                        mockMentor?.id === m.id
+                          ? 'border-emerald-600 bg-emerald-50/70 shadow-xs'
+                          : 'border-slate-200 hover:border-slate-300 bg-white'
+                      }`}
+                    >
+                      <img
+                        src={m.avatar}
+                        alt={m.name}
+                        className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-bold text-slate-900 truncate leading-tight">{m.name}</h4>
+                        <p className="text-[10px] text-emerald-700 font-semibold truncate">{m.currentCompany}</p>
+                        <p className="text-[9px] text-slate-400 truncate">{m.currentRole}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Target Interview Role */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Target Interview Role *</label>
+                <select
+                  value={mockTargetRole}
+                  onChange={(e) => setMockTargetRole(e.target.value)}
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 font-semibold"
+                >
+                  {mockMentor?.targetRoles?.map((r, i) => (
+                    <option key={i} value={r}>{r}</option>
+                  ))}
+                  <option value="General SDE-1 / Software Engineering">General SDE-1 / Software Engineering</option>
+                  <option value="Cloud & Systems Infrastructure">Cloud & Systems Infrastructure</option>
+                  <option value="Embedded Systems & FPGA">Embedded Systems & FPGA</option>
+                  <option value="AI / ML Systems Engineering">AI / ML Systems Engineering</option>
+                </select>
+              </div>
+
+              {/* Date and Time Slot */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Preferred Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={mockDate}
+                    onChange={(e) => setMockDate(e.target.value)}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Interviewer Available Slot *</label>
+                  <select
+                    value={mockSlot}
+                    onChange={(e) => setMockSlot(e.target.value)}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 font-medium"
+                  >
+                    {mockMentor?.availableSlots?.map((s, i) => (
+                      <option key={i} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Interview Focus */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Primary Preparation Focus *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={mockFocus}
+                  onChange={(e) => setMockFocus(e.target.value)}
+                  placeholder="e.g. Low-Level Design & Concurrency Mutexes / LeetCode Hard Graphs"
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="p-2.5 bg-emerald-50/70 border border-emerald-200 rounded-xl text-[11px] text-emerald-950 flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Confirmed 45-Min Video Session:</strong> Includes live whiteboard coding, system architecture evaluation, and 10 minutes of direct rubric scoring feedback.
+                </span>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+                <Button variant="outline" size="sm" type="button" onClick={() => setMockModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  type="submit"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5 shadow-md shadow-emerald-600/20"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-emerald-200" />
+                  <span>Confirm & Schedule Mock Interview</span>
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Success Toasts for Referral & Mock Interview */}
+      {referralToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-indigo-900 text-white px-5 py-3.5 rounded-2xl shadow-xl border border-indigo-700 flex items-center gap-3 animate-in slide-in-from-bottom-5">
+          <Zap className="w-5 h-5 text-amber-300" />
+          <div>
+            <p className="text-xs font-bold">Fast-Track Referral Token Redeemed! (-50 pts)</p>
+            <p className="text-[11px] text-indigo-200">
+              Request routed to {selectedMentor?.name} at {referralCompany}. Check your tracker below.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {mockToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-emerald-900 text-white px-5 py-3.5 rounded-2xl shadow-xl border border-emerald-700 flex items-center gap-3 animate-in slide-in-from-bottom-5">
+          <CheckCircle2 className="w-5 h-5 text-emerald-300" />
+          <div>
+            <p className="text-xs font-bold">1-on-1 Mock Interview Confirmed!</p>
+            <p className="text-[11px] text-emerald-200">
+              Meeting link generated for {mockDate} with {mockMentor?.name}.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
